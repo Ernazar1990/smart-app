@@ -1,0 +1,8 @@
+{
+  "name": "smart app",
+  "description": " Ұлттық бірыңғай тестілеуге, пән бойынша білімді тереңдетіге көмекші платформа.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
