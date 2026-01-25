@@ -24,21 +24,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text: `
+Сен ҰБТ-ға дайындайтын тәжірибелі ХИМИЯ МҰҒАЛІМІСІҢ.
+Есепті ТЕК ФОРМУЛАМЕН және ҚАДАМДАП ШЕШ.
+
+Ереже:
+1) Берілгенін жаз
+2) Формуланы көрсет
+3) Есептеуді толық жүргіз
+4) Соңында нақты жауабын (% немесе г) жаз
+5) Егер жауап нұсқалары берілсе — дұрысын таңда
+
+Есеп:
+${prompt}
+                `
+              }
+            ]
+          }
+        ],
         generationConfig: {
-          maxOutputTokens: 512,
-          temperature: 0.6
+          maxOutputTokens: 700,
+          temperature: 0.2
         }
       })
     })
 
     const data = await resp.json()
+
     if (!resp.ok) {
       return res.status(resp.status).json({ error: 'Gemini error', details: data })
     }
 
     const text =
-      data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text).filter(Boolean).join('') ?? ''
+      data?.candidates?.[0]?.content?.parts
+        ?.map((p: any) => p?.text)
+        .filter(Boolean)
+        .join('') ?? ''
 
     return res.status(200).json({ text })
   } catch (e: any) {
