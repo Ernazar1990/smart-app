@@ -137,7 +137,7 @@ const LessonContent: React.FC<LessonContentProps> = ({ lesson, onComplete }) => 
                 <div className="p-8 bg-gray-50 rounded-[40px] border border-gray-100">
                    <p className="font-black text-gray-800 mb-8 text-lg font-outfit">{lesson.homework[hwIdx].text}</p>
                    <div className="grid grid-cols-1 gap-4">
-                     {lesson.homework[hwIdx].options.map((opt, i) => (
+                    {lesson.homework[hwIdx].options.map((opt: string, i: number) => (
                        <button key={i} onClick={() => setSelectedOpt(i)} className={`w-full p-5 rounded-3xl border-2 text-left transition-all flex items-center gap-5 ${
                          selectedOpt === i ? 'border-emerald-500 bg-emerald-50' : 'border-gray-50 hover:bg-white'
                        }`}>
