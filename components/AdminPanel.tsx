@@ -1,3 +1,4 @@
+import AdminPostsManager from './AdminPostsManager';
 import React, { useState, useMemo } from 'react';
 import { SUBJECTS } from '../constants';
 import { Module, Lesson, Subject, AppView, StaffMember, UserProgress } from '../types';
