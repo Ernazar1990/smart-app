@@ -125,7 +125,7 @@ const App: React.FC = () => {
     localStorage.setItem('smart_user_session', JSON.stringify(newUser));
   };
 
-  // 1) LocalStorage session қалпына келтіру (ескі логикаңыз)
+  // 1) LocalStorage session қалпына келтіру
   useEffect(() => {
     const savedSession = localStorage.getItem('smart_user_session');
     if (savedSession && savedSession !== 'undefined' && savedSession !== 'null') {
@@ -145,7 +145,7 @@ const App: React.FC = () => {
     }
   }, [staffList]);
 
-  // 2) Supabase session болса — автоматты login (жаңа қадам)
+  // 2) Supabase session болса — автоматты login
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) {
@@ -166,6 +166,7 @@ const App: React.FC = () => {
     return () => {
       sub.subscription.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleUpdateMarathon = (m: UserMarathon) => {
@@ -175,6 +176,7 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
+    // ✅ Сабақ ашық тұрса — Admin емес кезде ғана LessonContent көрсетеміз
     if (selectedLesson && !currentView.startsWith('admin')) {
       return (
         <div className="animate-in fade-in">
@@ -189,6 +191,7 @@ const App: React.FC = () => {
       );
     }
 
+    // ✅ Негізгі навигация (БІР switch)
     switch (currentView) {
       case 'home':
         return (
@@ -196,12 +199,13 @@ const App: React.FC = () => {
             user={user}
             subjects={SUBJECTS}
             onSelectView={setCurrentView}
-            onSelectSubject={id => {
+            onSelectSubject={(id) => {
               setSelectedSubjectId(id);
               setCurrentView('module-list');
             }}
           />
         );
+
       case 'module-list':
         return (
           <ModuleList
@@ -213,49 +217,73 @@ const App: React.FC = () => {
             onSelectSubject={setSelectedSubjectId}
           />
         );
+
       case 'ai-tools-hub':
         return <AIToolsHub onSelectView={setCurrentView} />;
+
       case 'profile':
-        return <ProfileView user={user} onLogout={() => setIsLoggedIn(false)} onSelectView={setCurrentView} />;
+        return (
+          <ProfileView
+            user={user}
+            onLogout={() => setIsLoggedIn(false)}
+            onSelectView={setCurrentView}
+          />
+        );
+
       case 'uni-list':
         return <UniListView user={user} />;
+
       case 'rating':
         return <RatingView user={user} onBack={() => setCurrentView('profile')} />;
+
       case 'marathon':
         return <MarathonView user={user} onUpdateMarathon={handleUpdateMarathon} />;
+
       case 'subject-selection':
         return (
           <SubjectSelectionView
             user={user}
-            onUpdateSubjects={s => setUser({ ...user, chosenElectives: s })}
+            onUpdateSubjects={(s) => setUser({ ...user, chosenElectives: s })}
             onClose={() => setCurrentView('home')}
           />
         );
 
       case 'periodic-table':
         return <PeriodicTable onBack={() => setCurrentView('ai-tools-hub')} />;
+
       case 'ai-tutor':
         return <AITutor onBack={() => setCurrentView('ai-tools-hub')} />;
+
       case 'scanner':
         return <ScannerView onBack={() => setCurrentView('ai-tools-hub')} />;
+
       case 'formulas':
         return <FormulaHub onBack={() => setCurrentView('ai-tools-hub')} />;
+
       case 'solubility-table':
         return <SolubilityTable onBack={() => setCurrentView('ai-tools-hub')} />;
+
       case 'reactivity-series':
         return <ReactivitySeries onBack={() => setCurrentView('ai-tools-hub')} />;
+
       case 'multiplication-table':
         return <MultiplicationTable onBack={() => setCurrentView('ai-tools-hub')} />;
+
       case 'glossary':
         return <GlossaryView onBack={() => setCurrentView('ai-tools-hub')} />;
+
       case 'reaction-balancer':
         return <ReactionBalancer onBack={() => setCurrentView('ai-tools-hub')} />;
+
       case 'flashcards':
         return <Flashcards onBack={() => setCurrentView('ai-tools-hub')} />;
+
       case 'arena':
         return <ArenaView onBack={() => setCurrentView('ai-tools-hub')} />;
+
       case 'career-advisor':
         return <CareerAdvisorView onBack={() => setCurrentView('ai-tools-hub')} />;
+
       case 'roadmap':
         return (
           <RoadmapView
@@ -264,14 +292,21 @@ const App: React.FC = () => {
             user={user}
           />
         );
+
       case 'tournament':
         return <TournamentView onBack={() => setCurrentView('home')} />;
-      case 'test':
-        return <TestView onComplete={s => setUser({ ...user, points: user.points + s })} />;
 
+      case 'test':
+        return <TestView onComplete={(s) => setUser({ ...user, points: user.points + s })} />;
+
+      // ✅ ADMIN VIEW-лердің бәрі бір AdminPanel арқылы басқарылады
       case 'admin':
       case 'admin-content':
+      case 'admin-posts':
+      case 'admin-universities':
+      case 'admin-aihub':
       case 'admin-staff':
+      case 'admin-users':
         return (
           <AdminPanel
             currentView={currentView}
@@ -290,7 +325,7 @@ const App: React.FC = () => {
             user={user}
             subjects={SUBJECTS}
             onSelectView={setCurrentView}
-            onSelectSubject={id => {
+            onSelectSubject={(id) => {
               setSelectedSubjectId(id);
               setCurrentView('module-list');
             }}

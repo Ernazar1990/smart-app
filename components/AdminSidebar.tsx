@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { AppView } from '../types';
 
@@ -9,12 +8,26 @@ interface AdminSidebarProps {
 }
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setView, userRole }) => {
-  const adminMenuItems = [
+  const adminMenuItems: { id: AppView; icon: string; label: string }[] = [
     { id: 'admin', icon: 'fa-chart-pie', label: 'Басқару панелі' },
+
+    // Курстар
     { id: 'admin-content', icon: 'fa-layer-group', label: 'Контент (Курстар)' },
+
+    // ✅ Жаңа: Лента
+    { id: 'admin-posts', icon: 'fa-newspaper', label: 'Лента (мақалалар)' },
+
+    // ✅ Жаңа: ЖОО
+    { id: 'admin-universities', icon: 'fa-building-columns', label: 'ЖОО менеджері' },
+
+    // ✅ Жаңа: AI Hub
+    { id: 'admin-aihub', icon: 'fa-brain', label: 'AI Hub control' },
+
+    // Оқушылар (сенде view жоқ болса, кейін жасап аламыз)
     { id: 'admin-users', icon: 'fa-users', label: 'Оқушылар' },
   ];
 
+  // super-admin ғана көретін
   if (userRole === 'super-admin') {
     adminMenuItems.push({ id: 'admin-staff', icon: 'fa-user-tie', label: 'Қызметкерлер' });
   }
@@ -37,7 +50,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setView, userR
           return (
             <button
               key={item.id}
-              onClick={() => setView(item.id as AppView)}
+              onClick={() => setView(item.id)}
               className={`w-full flex items-center gap-4 px-5 py-4 rounded-[22px] transition-all group ${
                 isActive ? 'bg-indigo-600 text-white shadow-xl' : 'text-slate-400 hover:bg-slate-800'
               }`}
@@ -50,7 +63,10 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setView, userR
       </nav>
 
       <div className="mt-auto pt-6">
-        <button onClick={() => setView('home')} className="w-full flex items-center gap-4 px-5 py-4 rounded-[22px] bg-slate-800 text-slate-300 hover:bg-emerald-600 hover:text-white transition-all">
+        <button
+          onClick={() => setView('home')}
+          className="w-full flex items-center gap-4 px-5 py-4 rounded-[22px] bg-slate-800 text-slate-300 hover:bg-emerald-600 hover:text-white transition-all"
+        >
           <i className="fas fa-arrow-left text-sm"></i>
           <span className="text-sm font-bold">Оқу режимі</span>
         </button>

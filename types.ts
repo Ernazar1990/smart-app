@@ -1,6 +1,6 @@
 
-export type AppView = 'auth' | 'home' | 'subjects' | 'module-list' | 'lesson-detail' | 'test' | 'marathon' | 'rating' | 'profile' | 'subscription' | 'periodic-table' | 'ai-tutor' | 'news-detail' | 'uni-list' | 'onboarding' | 'scanner' | 'formulas' | 'admin' | 'admin-content' | 'admin-users' | 'admin-staff' | 'subject-selection' | 'solubility-table' | 'reactivity-series' | 'multiplication-table' | 'glossary' | 'ai-tools-hub' | 'reaction-balancer' | 'flashcards' | 'arena' | 'ai-study-plan' | 'career-advisor' | 'roadmap' | 'tournament';
-
+export type AppView = 'auth' | 'home' | 'subjects' | 'module-list' | 'lesson-detail' | 'test' | 'marathon' | 'rating' | 'profile' | 'subscription' | 'periodic-table' | 'ai-tutor' | 'news-detail' | 'uni-list' | 'onboarding' | 'scanner' | 'formulas' | 'admin' | 'admin-content' | 'admin-users' | 'admin-staff' | 'subject-selection' | 'solubility-table' | 'reactivity-series' | 'multiplication-table' | 'glossary' | 'ai-tools-hub' | 'reaction-balancer' | 'flashcards' | 'arena' | 'ai-study-plan' | 'career-advisor' | 'roadmap' | 'tournament';  | 'admin-posts';| 'admin-universities'
+| 'admin-aihub'
 export type UserRole = 'student' | 'teacher' | 'super-admin';
 
 // Missing type: UserMarathon
