@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 import StudentLayout from './components/StudentLayout';
 import AdminLayout from './components/AdminLayout';
@@ -353,6 +354,7 @@ const App: React.FC = () => {
           {renderContent()}
         </StudentLayout>
       )}
+      <SpeedInsights />
     </div>
   );
 };
