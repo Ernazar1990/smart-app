@@ -1,159 +1,164 @@
-
-import React, { useState } from 'react';
-import { UserProgress, UserMarathon } from '../types';
-import { MARATHON_TASKS, MOTIVATIONAL_QUOTES } from '../constants';
+import React, { useMemo } from "react";
+import { UserMarathon, UserProgress } from "../types";
 
 interface MarathonViewProps {
   user: UserProgress;
-  onUpdateMarathon: (marathon: UserMarathon) => void;
+  onUpdateMarathon: (m: UserMarathon) => void;
 }
 
-const MarathonView: React.FC<MarathonViewProps> = ({ user, onUpdateMarathon }) => {
+const MOTIVATIONAL_QUOTES = [
+  "Күн сайын аздап — үлкен нәтиже.",
+  "Тұрақтылық — басты күш.",
+  "Бүгін жаса — ертең жеңіл болады.",
+  "Сабыр мен еңбек бәрін жеңеді.",
+];
+
+export default function MarathonView({ user, onUpdateMarathon }: MarathonViewProps) {
   const marathon = user.marathon;
-  const [selectedDuration, setSelectedDuration] = useState<7 | 14 | 30>(7);
 
-  const startMarathon = (duration: 7 | 14 | 30) => {
-    const newMarathon: UserMarathon = {
+  // ✅ қауіпсіз дефолттар
+  const isActive = !!(marathon?.isActive ?? marathon?.active);
+  const completedDays = marathon?.completedDays ?? [];
+  const currentStreak = marathon?.currentStreak ?? user.streak ?? 0;
+  const duration = marathon?.duration ?? 30;
+  const startIso = marathon?.startDate ?? marathon?.startAt ?? new Date().toISOString();
+  const start = new Date(startIso);
+
+  const diffDays = useMemo(() => {
+    const now = new Date();
+    const ms = now.getTime() - start.getTime();
+    const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+    return Math.max(0, days);
+  }, [startIso]);
+
+  const progress = useMemo(() => {
+    const p = Math.min((completedDays.length / duration) * 100, 100);
+    return Number.isFinite(p) ? p : 0;
+  }, [completedDays.length, duration]);
+
+  const quote = useMemo(() => {
+    const idx = (currentStreak || 0) % MOTIVATIONAL_QUOTES.length;
+    return MOTIVATIONAL_QUOTES[idx];
+  }, [currentStreak]);
+
+  const startMarathon = () => {
+    const next: UserMarathon = {
       isActive: true,
-      duration,
+      active: true,
       startDate: new Date().toISOString(),
+      startAt: new Date().toISOString(),
+      duration: 30,
       completedDays: [],
-      currentStreak: 0
+      currentStreak: 0,
     };
-    onUpdateMarathon(newMarathon);
+    onUpdateMarathon(next);
   };
 
-  const completeDay = () => {
+  const stopMarathon = () => {
     if (!marathon) return;
-    const today = new Date();
-    const start = new Date(marathon.startDate);
-    const diffDays = Math.floor((today.getTime() - start.getTime()) / (1000 * 3600 * 24));
-    
-    if (!marathon.completedDays.includes(diffDays)) {
-      onUpdateMarathon({
-        ...marathon,
-        completedDays: [...marathon.completedDays, diffDays],
-        currentStreak: marathon.currentStreak + 1
-      });
-    }
+    onUpdateMarathon({ ...marathon, isActive: false, active: false });
   };
 
-  if (!marathon || !marathon.isActive) {
+  const markTodayDone = () => {
+    if (!marathon) return;
+
+    const day = diffDays + 1;
+
+    const list = marathon.completedDays ?? [];
+    if (list.includes(day)) return;
+
+    const next: UserMarathon = {
+      ...marathon,
+      completedDays: [...list, day],
+      currentStreak: (marathon.currentStreak ?? 0) + 1,
+      isActive: true,
+      active: true,
+    };
+
+    onUpdateMarathon(next);
+  };
+
+  if (!marathon || !isActive) {
     return (
-      <div className="space-y-8 pb-24 animate-in fade-in duration-500">
-        <header className="text-center space-y-3">
-          <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-[30px] flex items-center justify-center text-4xl mx-auto shadow-sm">
-            <i className="fas fa-fire"></i>
-          </div>
-          <h2 className="text-3xl font-black text-gray-900">ҰБТ Марафоны</h2>
-          <p className="text-gray-500 text-sm max-w-xs mx-auto">Күнделікті дайындық арқылы грантқа жақында. Шыдамдылығыңды сына!</p>
+      <div className="space-y-6 animate-in fade-in">
+        <header className="flex items-center justify-between">
+          <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 font-outfit">
+            Марафон
+          </h2>
         </header>
 
-        <div className="grid grid-cols-1 gap-4 px-2">
-          {[
-            { days: 7, label: 'Жеңіл старт', icon: 'fa-bolt', color: 'bg-blue-500', desc: 'Әдет қалыптастыруға арналған' },
-            { days: 14, label: 'Мықты қарқын', icon: 'fa-rocket', color: 'bg-indigo-600', desc: 'Тереңірек дайындалу үшін' },
-            { days: 30, label: 'Нағыз чемпион', icon: 'fa-crown', color: 'bg-orange-600', desc: 'Грант иегері болу үшін' },
-          ].map((opt) => (
-            <button
-              key={opt.days}
-              onClick={() => setSelectedDuration(opt.days as any)}
-              className={`p-6 rounded-[35px] border-2 text-left transition-all flex items-center gap-6 ${
-                selectedDuration === opt.days ? 'border-orange-500 bg-orange-50' : 'border-gray-50 bg-white'
-              }`}
-            >
-              <div className={`w-14 h-14 ${opt.color} rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg`}>
-                <i className={`fas ${opt.icon}`}></i>
-              </div>
-              <div className="flex-1">
-                <h4 className="font-black text-gray-900">{opt.days} күндік марафон</h4>
-                <p className="text-xs text-gray-500 font-bold uppercase mt-1 tracking-wider">{opt.label}</p>
-                <p className="text-[10px] text-gray-400 mt-0.5">{opt.desc}</p>
-              </div>
-              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedDuration === opt.days ? 'border-orange-500' : 'border-gray-200'}`}>
-                {selectedDuration === opt.days && <div className="w-3 h-3 bg-orange-500 rounded-full"></div>}
-              </div>
-            </button>
-          ))}
+        <div className="bg-white dark:bg-slate-800 p-10 rounded-[40px] border border-gray-100 dark:border-slate-700 shadow-sm text-center space-y-4">
+          <p className="text-slate-500 font-bold">Марафон әлі басталмаған.</p>
+          <button
+            onClick={startMarathon}
+            className="bg-emerald-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl"
+          >
+            Марафонды бастау
+          </button>
         </div>
-
-        <button
-          onClick={() => startMarathon(selectedDuration)}
-          className="w-full bg-gray-900 text-white py-5 rounded-[30px] font-black shadow-xl hover:scale-[1.02] active:scale-95 transition-all"
-        >
-          Марафонды бастау
-        </button>
       </div>
     );
   }
 
-  const progress = Math.min((marathon.completedDays.length / marathon.duration) * 100, 100);
-  const randomQuote = MOTIVATIONAL_QUOTES[marathon.currentStreak % MOTIVATIONAL_QUOTES.length];
-
   return (
-    <div className="space-y-6 pb-32 animate-in slide-in-from-bottom duration-500">
-      <div className="bg-gradient-to-br from-orange-500 to-red-600 p-8 rounded-[45px] text-white shadow-xl relative overflow-hidden">
-        <i className="fas fa-fire absolute -right-6 -top-6 text-9xl opacity-10 rotate-12"></i>
-        <div className="relative z-10 flex justify-between items-start">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Менің марафоным</p>
-            <h2 className="text-3xl font-black">{marathon.duration} күн</h2>
+    <div className="space-y-6 animate-in fade-in">
+      <header className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 font-outfit">
+            Марафон
+          </h2>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">{quote}</p>
+        </div>
+
+        <button
+          onClick={stopMarathon}
+          className="bg-red-50 text-red-700 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-red-200 hover:bg-red-500 hover:text-white transition-all"
+        >
+          Тоқтату
+        </button>
+      </header>
+
+      <div className="bg-white dark:bg-slate-800 p-8 rounded-[40px] border border-gray-100 dark:border-slate-700 shadow-sm space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gray-50 dark:bg-slate-900/50 rounded-[30px] p-6 border border-gray-100 dark:border-slate-700">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ұзақтығы</p>
+            <h2 className="text-3xl font-black mt-2">{duration} күн</h2>
           </div>
-          <div className="text-right">
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Streak</p>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-black">{marathon.currentStreak} күн</span>
-              <i className="fas fa-fire text-amber-300"></i>
-            </div>
+
+          <div className="bg-gray-50 dark:bg-slate-900/50 rounded-[30px] p-6 border border-gray-100 dark:border-slate-700">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ағымдағы серия</p>
+            <h2 className="text-3xl font-black mt-2">{currentStreak} күн</h2>
+          </div>
+
+          <div className="bg-gray-50 dark:bg-slate-900/50 rounded-[30px] p-6 border border-gray-100 dark:border-slate-700">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Прогресс</p>
+            <h2 className="text-3xl font-black mt-2">{Math.round(progress)}%</h2>
           </div>
         </div>
 
-        <div className="mt-8 space-y-2">
-          <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-            <span>Прогресс</span>
-            <span>{Math.round(progress)}%</span>
-          </div>
-          <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
-            <div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: `${progress}%` }}></div>
+        <div className="w-full bg-gray-100 dark:bg-slate-900 rounded-full h-3 overflow-hidden">
+          <div className="h-3 bg-emerald-600" style={{ width: `${progress}%` }} />
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-3">
+          <button
+            onClick={markTodayDone}
+            className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl"
+          >
+            Бүгінгі күн орындалды
+          </button>
+
+          <div className="flex-1 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-slate-700 p-4 text-sm font-bold text-slate-500">
+            Басталған күн:{" "}
+            <span className="text-slate-800 dark:text-slate-200">
+              {start.toLocaleDateString()}
+            </span>
+            <br />
+            Орындалған күндер:{" "}
+            <span className="text-emerald-600 dark:text-emerald-400">{completedDays.length}</span>
           </div>
         </div>
       </div>
-
-      <div className="bg-white p-6 rounded-[35px] border border-gray-100 shadow-sm flex items-start gap-4 italic text-gray-600">
-        <i className="fas fa-quote-left text-orange-400 text-xl"></i>
-        <p className="text-sm font-medium leading-relaxed">"{randomQuote}"</p>
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="text-xl font-black text-gray-900 px-2 tracking-tight">Бүгінгі тапсырмалар</h3>
-        <div className="bg-white rounded-[35px] border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-50">
-          {MARATHON_TASKS.map((task, i) => (
-            <div key={i} className="p-5 flex items-center gap-4 group">
-              <button className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-300 hover:text-emerald-500 transition-colors">
-                <i className="far fa-circle text-lg"></i>
-              </button>
-              <span className="text-sm font-bold text-gray-700">{task}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <button
-        onClick={completeDay}
-        className="w-full bg-emerald-600 text-white py-5 rounded-[30px] font-black shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
-      >
-        <i className="fas fa-check-circle"></i>
-        Бүгінгі күнді аяқтау
-      </button>
-
-      <button
-        onClick={() => onUpdateMarathon({ ...marathon, isActive: false })}
-        className="w-full text-gray-400 font-bold text-xs py-2"
-      >
-        Марафоннан бас тарту
-      </button>
     </div>
   );
-};
-
-export default MarathonView;
+}

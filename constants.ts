@@ -1,105 +1,136 @@
+// src/constants.ts
 
-import { Subject, Module, NewsItem, Question, Lesson, InternationalGrant } from './types';
+// ЕСКЕРТУ: Бұл файл енді Subject/University типтерін өз ішінде қайта анықтамайды.
+// Компоненттер күткен өрістер: name, icon, color бар.
 
-const createLesson = (id: string, title: string, isFree = false): Lesson => ({
-  id,
-  title,
-  isFree,
-  videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-  presentationUrl: 'https://drive.google.com/file/d/sample/view',
-  analysisVideoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-  pdfSolutionUrl: 'https://drive.google.com/file/d/sample-analysis/view',
-  transcript: `Бұл "${title}" тақырыбы бойынша мәтіндік нұсқа.`,
-  reinforcement: {
-    question: `${title} бойынша бекіту сұрағы:`,
-    options: ['Дұрыс жауап', 'Қате 1', 'Қате 2', 'Қате 3'],
-    correctAnswer: 0
-  },
-  homework: Array.from({ length: 15 }, (_, i) => ({
-    id: `${id}-hw-${i}`,
-    text: `${title}: Тест сұрағы №${i + 1}`,
-    options: ['A нұсқасы', 'B нұсқасы', 'C нұсқасы', 'D нұсқасы'],
-    correctAnswer: 0
-  }))
-});
+export type SubjectId =
+  | "math"
+  | "reading"
+  | "chem"
+  | "phys"
+  | "bio"
+  | "history"
+  | "geo"
+  | "eng"
+  | "creative";
 
-export const SUBJECT_TITLES: Record<string, string[]> = {
-  'math-lit': ['Сандар жиыны', 'Проценттер', 'Логикалық есептер', 'Геометрия негіздері', 'Мәтіндік есептер', 'Графиктер мен диаграммалар'],
-  'reading-lit': ['Мәтін түрлері', 'Негізгі ойды анықтау', 'Стильдік ерекшеліктер', 'Мәнмәтіндік талдау', 'Ақпаратты салыстыру'],
-  'history-kz': ['Ежелгі Қазақстан', 'Түркі қағанаттары', 'Қазақ хандығының құрылуы', 'Ресей империясы кезеңі', 'Алаш қозғалысы', 'Тәуелсіз Қазақстан'],
-  'math': ['Алгебралық өрнектер', 'Функциялар', 'Тригонометрия', 'Туынды және Интеграл', 'Планиметрия', 'Стереометрия', 'Ықтималдықтар теориясы'],
-  'phys': ['Механика', 'Термодинамика', 'Электродинамика', 'Оптика', 'Кванттық физика', 'Ядролық физика'],
-  'chem': [
-    'Химияға кіріспе', 'Атом құрылысы', 'Периодтық жүйе', 'Химиялық байланыс', 
-    'Зат мөлшері', 'Бейорганикалық кластар', 'Ерітінділер', 'ТТР', 
-    'Реакция жылдамдығы', 'Тепе-теңдік', 'Металдар', 'Бейметалдар', 
-    'Сутегі мен Оттегі', 'Азот пен Фосфор', 'Көміртек пен Кремний', 
-    'Органикалық кіріспе', 'Алкандар', 'Алкендер мен Алкиндер', 
-    'Арендер', 'Спирттер мен Альдегидтер', 'Карбон қышқылдары', 'Азотты қосылыстар'
-  ],
-  'bio': [
-    'Биологияға кіріспе', 'Цитология: Жасуша', 'Биохимия', 'Метаболизм',
-    'Вирустар мен Бактериялар', 'Саңырауқұлақтар', 'Өсімдіктер', 'Жануарлар',
-    'Асқорыту жүйесі', 'Қан айналым жүйесі', 'Тыныс алу', 'Жүйке жүйесі',
-    'Генетика', 'Селекция', 'Экология', 'Эволюция', 'Биосфера'
-  ],
-};
-
-const generateModules = (subjectId: string): Module[] => {
-  const titles = SUBJECT_TITLES[subjectId] || [];
-  return titles.map((title, index) => {
-    const isChem = subjectId === 'chem';
-    const lessonsCount = isChem ? 3 : 1; 
-    const lessons: Lesson[] = [];
-    for (let i = 1; i <= lessonsCount; i++) {
-      let lessonTitle = `${title}: ${i}-бөлім`;
-      if (isChem) {
-        if (i === 1) lessonTitle = `${title}: Теория негіздері`;
-        if (i === 2) lessonTitle = `${title}: Есептер шығару`;
-        if (i === 3) lessonTitle = `${title}: Күрделі деңгей (ҰБТ)`;
-      }
-      lessons.push(createLesson(`${subjectId}-m${index + 1}-l${i}`, lessonTitle, index === 0 && i === 1));
-    }
-    return {
-      id: `${subjectId}-m${index + 1}`,
-      title: `${index + 1}. ${title}`,
-      weekNumber: index + 1,
-      lessons
-    };
-  });
-};
-
-export const MODULES_BY_SUBJECT: Record<string, Module[]> = {
-  'math-lit': generateModules('math-lit'),
-  'reading-lit': generateModules('reading-lit'),
-  'history-kz': generateModules('history-kz'),
-  'math': generateModules('math'),
-  'phys': generateModules('phys'),
-  'chem': generateModules('chem'),
-  'bio': generateModules('bio'),
+export type Subject = {
+  id: SubjectId;
+  name: string;
+  title?: string;      // backward compat (кей жер title қолданса)
+  icon: string;        // fontawesome class suffix
+  color: string;       // tailwind gradient or bg class
+  isElective?: boolean;
 };
 
 export const SUBJECTS: Subject[] = [
-  { id: 'math-lit', name: 'Мат. сауаттылық', icon: 'fa-calculator', color: 'bg-blue-500', isElective: false },
-  { id: 'reading-lit', name: 'Оқу сауаттылығы', icon: 'fa-book-open', color: 'bg-orange-500', isElective: false },
-  { id: 'history-kz', name: 'Қазақстан тарихы', icon: 'fa-landmark', color: 'bg-red-500', isElective: false },
-  { id: 'math', name: 'Математика', icon: 'fa-square-root-variable', color: 'bg-blue-600', isElective: true },
-  { id: 'phys', name: 'Физика', icon: 'fa-atom', color: 'bg-indigo-500', isElective: true },
-  { id: 'chem', name: 'Химия', icon: 'fa-flask', color: 'bg-emerald-500', isElective: true },
-  { id: 'bio', name: 'Биология', icon: 'fa-dna', color: 'bg-pink-500', isElective: true },
+  { id: "math", name: "Математика", title: "Математика", icon: "fa-square-root-alt", color: "bg-emerald-600" },
+  { id: "reading", name: "Оқу сауаттылығы", title: "Оқу сауаттылығы", icon: "fa-book-reader", color: "bg-indigo-600" },
+
+  { id: "chem", name: "Химия", title: "Химия", icon: "fa-flask", color: "bg-orange-600", isElective: true },
+  { id: "phys", name: "Физика", title: "Физика", icon: "fa-atom", color: "bg-blue-600", isElective: true },
+  { id: "bio", name: "Биология", title: "Биология", icon: "fa-dna", color: "bg-green-600", isElective: true },
+  { id: "history", name: "Қазақстан тарихы", title: "Қазақстан тарихы", icon: "fa-landmark", color: "bg-slate-900", isElective: true },
+  { id: "geo", name: "География", title: "География", icon: "fa-globe-asia", color: "bg-cyan-600", isElective: true },
+  { id: "eng", name: "Ағылшын тілі", title: "Ағылшын тілі", icon: "fa-language", color: "bg-purple-600", isElective: true },
 ];
+
+export type Module = {
+  id: string;
+  subjectId: SubjectId;
+  title: string;
+  description?: string;
+};
+
+export const MODULES_BY_SUBJECT: Record<Exclude<SubjectId, "creative">, Module[]> = {
+  math: [
+    { id: "math-1", subjectId: "math", title: "Негізгі формулалар" },
+    { id: "math-2", subjectId: "math", title: "Тест стратегиясы" },
+  ],
+  reading: [
+    { id: "read-1", subjectId: "reading", title: "Мәтінмен жұмыс" },
+    { id: "read-2", subjectId: "reading", title: "Логикалық сұрақтар" },
+  ],
+  chem: [{ id: "chem-1", subjectId: "chem", title: "Зат мөлшері, есептер" }],
+  phys: [{ id: "phys-1", subjectId: "phys", title: "Механика негіздері" }],
+  bio: [{ id: "bio-1", subjectId: "bio", title: "Жасуша және генетика" }],
+  history: [{ id: "hist-1", subjectId: "history", title: "Хронология, картамен жұмыс" }],
+  geo: [{ id: "geo-1", subjectId: "geo", title: "Климат және карта" }],
+  eng: [{ id: "eng-1", subjectId: "eng", title: "Grammar + Reading" }],
+};
+
+export type StrategicCombination = {
+  id: string;
+  name: string;
+  title?: string;     // backward compat
+  desc: string;
+  subjects: SubjectId[];
+  icon: string;
+  color: string;      // gradient tailwind: "from... to..."
+};
+
+export const STRATEGIC_COMBINATIONS: StrategicCombination[] = [
+  {
+    id: "combo-stem",
+    name: "STEM",
+    title: "STEM (Физ+Мат/Хим)",
+    desc: "Инженерия, IT, техникалық мамандықтар үшін тиімді.",
+    subjects: ["math", "phys"],
+    icon: "fa-microchip",
+    color: "from-emerald-500 to-cyan-600",
+  },
+  {
+    id: "combo-med",
+    name: "Медицина",
+    title: "Медицина (Био+Хим)",
+    desc: "Медицина, фармация, биотех бағыттарына.",
+    subjects: ["bio", "chem"],
+    icon: "fa-heartbeat",
+    color: "from-pink-500 to-orange-500",
+  },
+  {
+    id: "combo-social",
+    name: "Әлеумет",
+    title: "Әлеумет (Тарих+Гео)",
+    desc: "Құқық, халықаралық қатынас, әлеуметтік ғылымдар.",
+    subjects: ["history", "geo"],
+    icon: "fa-balance-scale",
+    color: "from-indigo-600 to-slate-900",
+  },
+];
+
+export type MockQuestion = {
+  id: string;
+  subjectId: SubjectId;
+  text: string;
+  options: string[];
+  correctIndex: number; // міндетті
+};
+
+export const MOCK_QUESTIONS: MockQuestion[] = [
+  { id: "q1", subjectId: "math", text: "2 + 3 = ?", options: ["4", "5", "6", "7"], correctIndex: 1 },
+  {
+    id: "q2",
+    subjectId: "reading",
+    text: "Мәтіндегі негізгі ойды табу деген не?",
+    options: ["Сөз санын санау", "Басты мағынаны анықтау", "Грамматиканы табу", "Дыбыстау"],
+    correctIndex: 1,
+  },
+];
+
+// UniListView-та қолданатын демо-шетел гранттары (минимум)
+export type InternationalGrant = {
+  id: string;
+  title: string;
+  description?: string;
+  topUnis: string[];
+};
 
 export const INTERNATIONAL_GRANTS: InternationalGrant[] = [
-  { id: 'hungary', country: 'Венгрия', title: 'Stipendium Hungaricum', totalGrants: '250 грант', programs: 'Бакалавриат — 110, Магистратура — 90', language: 'Венгр, ағылшын', deadline: 'Желтоқсан-Қаңтар', topUnis: ['University of Debrecen', 'Eötvös Loránd University'], image: 'https://images.unsplash.com/photo-1516306580123-e6e52b1b7b5f?auto=format&fit=crop&w=600', color: 'from-green-600 to-red-600' },
-  { id: 'china', country: 'Қытай', title: 'Қытай үкіметтік гранты', totalGrants: '155 грант', programs: 'Барлық деңгей', language: 'Қытай, ағылшын', deadline: 'Қаңтар-Ақпан', topUnis: ['Peking University', 'Tsinghua University'], image: 'https://images.unsplash.com/photo-1547981609-4b6bfe67ca0b?auto=format&fit=crop&w=600', color: 'from-red-600 to-yellow-500' }
-];
-
-export const MARATHON_TASKS = ["Бүгінгі сабақты толық көру", "10 есеп шығару", "AI Тьюторға 1 сұрақ қою"];
-export const MOTIVATIONAL_QUOTES = ["Бүгінгі еңбек - ертеңгі грант!", "Кішігірім қадамдар үлкен жеңіске жетелейді."];
-export const MOCK_QUESTIONS: Question[] = [
-  { id: 'q1', text: 'Зат мөлшерінің өлшем бірлігі қандай?', options: ['Моль', 'Килограмм', 'Литр', 'Метр'], correctAnswer: 0 }
-];
-export const STRATEGIC_COMBINATIONS = [
-  { id: 'bio-chem', name: 'Биология + Химия', subjects: ['bio', 'chem'], icon: 'fa-vials', color: 'from-emerald-500 to-teal-600', desc: 'Медицина, Фармация.' },
-  { id: 'math-phys', name: 'Математика + Физика', subjects: ['math', 'phys'], icon: 'fa-atom', color: 'from-blue-500 to-indigo-600', desc: 'Инженерия, IT.' },
+  {
+    id: "g1",
+    title: "Үкіметаралық гранттар (жалпы)",
+    description: "Елдер бойынша квота/шарттар жыл сайын жаңарады.",
+    topUnis: ["University A", "University B", "University C"],
+  },
 ];

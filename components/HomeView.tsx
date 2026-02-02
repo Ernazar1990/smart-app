@@ -1,15 +1,15 @@
 import React from 'react';
+import type { SubjectId } from '../constants';   
 import { UserProgress, Subject } from '../types';
 
 interface HomeViewProps {
   user: UserProgress;
   subjects: Subject[];
   onSelectView: (view: any) => void;
-  onSelectSubject: (subjectId: string) => void;
+  onSelectSubject: (subjectId: SubjectId) => void;  
 }
 
 const HomeView: React.FC<HomeViewProps> = ({ user, subjects, onSelectView, onSelectSubject }) => {
-  // Рөлге байланысты атауды анықтау
   const getRoleGreeting = () => {
     const firstName = user.name.split(' ')[0];
     switch (user.role) {

@@ -1,20 +1,17 @@
-// types.ts
-
-export type SubscriptionPlan = "none" | "basic" | "pro" | "premium";
-export type PostStatus = "draft" | "published";
+// src/types.ts
 
 export type AppView =
   | "home"
   | "module-list"
-  | "lesson"
+  | "lesson-detail"
   | "ai-tools-hub"
+  | "ai-tutor"
   | "profile"
   | "uni-list"
   | "rating"
   | "marathon"
   | "subject-selection"
   | "periodic-table"
-  | "ai-tutor"
   | "scanner"
   | "formulas"
   | "solubility-table"
@@ -28,7 +25,7 @@ export type AppView =
   | "roadmap"
   | "tournament"
   | "test"
-  // Admin routes
+  // admin
   | "admin"
   | "admin-content"
   | "admin-posts"
@@ -37,109 +34,221 @@ export type AppView =
   | "admin-staff"
   | "admin-users";
 
+// ---------------- SUBJECTS ----------------
 export type Subject = {
   id: string;
   name: string;
-  icon?: string;
-  color?: string;
+  icon: string;
+  color: string;
+  isElective?: boolean;
 };
 
-export type Reinforcement = {
-  question: string;
-  options: string[];
-  correctAnswer: number; // index
-};
-
+// ---------------- LESSONS / MODULES ----------------
 export type HomeworkItem = {
   id: string;
+  // кей жерде text, кей жерде question қолданылған — екеуі де рұқсат
+  text?: string;
+  question?: string;
+  options: string[];
+  correctAnswer: number;
+};
+
+export type ReinforcementQuestion = {
   question: string;
-  answer?: string;
-  options?: string[];
-  correctAnswer?: number;
-  explanation?: string;
+  options: string[];
+  correctAnswer: number;
 };
 
 export type Lesson = {
   id: string;
   title: string;
-  isFree: boolean;
+  isFree?: boolean;
 
-  // optional content links
   videoUrl?: string;
   presentationUrl?: string;
   analysisVideoUrl?: string;
   pdfSolutionUrl?: string;
 
-  reinforcement: Reinforcement;
+  // constants.ts ішінде transcript қолданылып тұр
+  transcript?: string;
+
+  // кей жерде reinforcement жоқ болуы мүмкін — optional қылдық
+  reinforcement?: ReinforcementQuestion;
+
   homework: HomeworkItem[];
 };
 
 export type Module = {
   id: string;
   title: string;
-  weekNumber: number;
+  weekNumber?: number;
   lessons: Lesson[];
 };
 
-export type StaffRole = "teacher" | "admin" | "super-admin";
-
+// ---------------- STAFF / USER ----------------
 export type StaffMember = {
   email: string;
   name: string;
-  role: StaffRole;
-  permissions: string[]; // e.g. ['all'] or ['chem','bio']
+  role: "super-admin" | "teacher" | "admin" | string;
+  permissions: string[];
 };
 
 export type UserMarathon = {
-  active?: boolean;
+  // екі вариант жүр: startDate және startAt, isActive және active
+  startDate?: string;
   startAt?: string;
-  endAt?: string;
-  daysDone?: number;
-  targetDays?: number;
-};
 
-export type PointsHistoryItem = {
-  at: string; // ISO
-  delta: number;
-  reason?: string;
+  isActive?: boolean;
+  active?: boolean;
+
+  duration?: number;
+
+  completedDays?: number[];
+  currentStreak?: number;
 };
 
 export type UserProgress = {
-  // identity
   name: string;
   email: string;
-  phone: string;
-  class: string;
-  region: string;
-  school: string;
-  pin: string;
+  phone?: string;
+  class?: string;
+  region?: string;
+  school?: string;
+  pin?: string;
 
-  // gamification
   points: number;
   xp: number;
   level: number;
   streak: number;
   estimatedScore: number;
 
-  // learning stats
   completedLessons: string[];
   totalLessons: number;
+
   recentScores: number[];
   categoryStrength: Record<string, number>;
   totalSolved: number;
   correctAnswers: number;
 
-  subscription: SubscriptionPlan;
+  subscription?: "none" | "basic" | "pro" | string;
 
   chosenElectives: string[];
-  startDate: string;
+  startDate?: string;
 
-  // admin flags
-  isAdmin: boolean;
-  role: "student" | StaffRole;
+  isAdmin?: boolean;
+  role?: string;
   permissions?: string[];
 
-  // optional features
+  pointsHistory?: any[];
+
   marathon?: UserMarathon;
-  pointsHistory: PointsHistoryItem[];
+};
+
+// ---------------- CHAT ----------------
+export type ChatMessage = {
+  // стандарт: model жоқ, assistant қолдану керек
+  role: "user" | "assistant" | "system";
+  content: string;
+};
+
+// ---------------- TESTS ----------------
+export type Question = {
+  id: string;
+  text: string;
+  options: string[];
+
+  // бір жауап: number, көп жауап: number[]
+  correctAnswer: number | number[];
+
+  // TestView.tsx осыны тексереді
+  isMulti?: boolean;
+};
+
+// ---------------- NEWS ----------------
+export type NewsItem = {
+  id: string;
+  title: string;
+  excerpt?: string;
+  content?: string;
+  createdAt?: string;
+};
+
+// ---------------- UNI HUB ----------------
+export type UniversityContacts = {
+  website?: string;
+  phone?: string;
+  email?: string;
+
+  admissionsUrl?: string;
+  admissionsPhone?: string;
+  admissionsEmail?: string;
+};
+
+export type UniversityAdmission = {
+  documentsKZ?: string[];
+  documentsIntl?: string[];
+  notes?: string[];
+};
+
+export type UniversityOpportunities = {
+  dormitory?: boolean;
+  exchange?: boolean;
+  doubleDegree?: boolean;
+  militaryDept?: boolean;
+  foundation?: boolean;
+  scholarships?: string[];
+};
+
+export type University = {
+  id: string;
+  name: string;
+
+  // UniListView қолданатын негізгі өрістер:
+  logo?: string | null;
+  location?: string | null;
+  region?: string | null;
+  type?: string | null;
+
+  specialtiesCount?: number | null;
+  minScore?: number | null;
+  averagePrice?: string | null;
+
+  hasDormitory?: boolean | null;
+  website?: string | null;
+  address?: string | null;
+  phone?: string | null;
+
+  // UniListView ішінде қолданылып тұр:
+  contacts?: UniversityContacts | null;
+  admission?: UniversityAdmission | null;
+  opportunities?: UniversityOpportunities | null;
+};
+
+export type Specialty = {
+  id: string;
+  code?: string;
+  name: string;
+  subjects: string[];
+  minScore?: number;
+  grants?: number;
+};
+
+export type InternationalGrant = {
+  id: string;
+
+  country?: string;
+  title?: string;
+
+  totalGrants?: string;
+  programs?: string;
+  language?: string;
+  deadline?: string;
+
+  topUnis?: string[];
+
+  image?: string;
+  color?: string;
+
+  // сенде UniListView кей жерде description көрсетеді
+  description?: string;
 };
