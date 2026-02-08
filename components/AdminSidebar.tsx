@@ -11,28 +11,14 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setView, userR
   const adminMenuItems: { id: AppView; icon: string; label: string }[] = [
     { id: 'admin', icon: 'fa-chart-pie', label: 'Басқару панелі' },
 
-    // Курстар
     { id: 'admin-content', icon: 'fa-layer-group', label: 'Контент (Курстар)' },
-
-    // ✅ Жаңа: Лента
     { id: 'admin-posts', icon: 'fa-newspaper', label: 'Лента (мақалалар)' },
-
-    // ✅ Жаңа: ЖОО
     { id: 'admin-universities', icon: 'fa-building-columns', label: 'ЖОО менеджері' },
-
-    // ✅ Жаңа: AI Hub
     { id: 'admin-aihub', icon: 'fa-brain', label: 'AI Hub control' },
 
-    // Оқушылар (сенде view жоқ болса, кейін жасап аламыз)
-    { id: 'admin-users', icon: 'fa-users', label: 'Оқушылар' },
-    { id: 'admin', icon: 'fa-chart-pie', label: 'Басқару панелі' },
-    { id: 'admin-content', icon: 'fa-layer-group', label: 'Контент (Курстар)' },
-    { id: 'admin-posts', icon: 'fa-newspaper', label: 'Лента' },
-    { id: 'admin-universities', icon: 'fa-building-columns', label: 'ЖОО менеджері' },
     { id: 'admin-users', icon: 'fa-users', label: 'Оқушылар' },
   ];
 
-  // super-admin ғана көретін
   if (userRole === 'super-admin') {
     adminMenuItems.push({ id: 'admin-staff', icon: 'fa-user-tie', label: 'Қызметкерлер' });
   }
