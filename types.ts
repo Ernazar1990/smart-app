@@ -44,6 +44,7 @@ export type Subject = {
 };
 
 // ---------------- LESSONS / MODULES ----------------
+
 export type HomeworkItem = {
   id: string;
   // кей жерде text, кей жерде question қолданылған — екеуі де рұқсат
@@ -62,20 +63,29 @@ export type ReinforcementQuestion = {
 export type Lesson = {
   id: string;
   title: string;
-  isFree?: boolean;
 
+  // 1) Негізгі видео
   videoUrl?: string;
-  presentationUrl?: string;
-  analysisVideoUrl?: string;
-  pdfSolutionUrl?: string;
 
   // constants.ts ішінде transcript қолданылып тұр
   transcript?: string;
 
-  // кей жерде reinforcement жоқ болуы мүмкін — optional қылдық
-  reinforcement?: ReinforcementQuestion;
+  // 2) Бекіту тапсырмасы
+  practiceHtml?: string;
 
+  // reinforcement кей жерде жоқ болуы мүмкін
+  reinforcementItems?: ReinforcementQuestion[]; // ✅ көп бекіту сұрақтары
+
+  // 3) Үй жұмысы
+  homeworkHtml?: string;
+  homeworkPdfUrl?: string;
+
+  // Үй жұмысы тесттері
   homework: HomeworkItem[];
+
+  // 4) Қатемен жұмыс
+  fixesVideoUrl?: string;
+  fixesPdfUrl?: string;
 };
 
 export type Module = {
@@ -84,7 +94,6 @@ export type Module = {
   weekNumber?: number;
   lessons: Lesson[];
 };
-
 // ---------------- STAFF / USER ----------------
 export type StaffMember = {
   email: string;

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { UserProgress } from "../types";
+import { supabase } from "../supabaseClient"; // сенде қайда тұр — соған сай path
 
 interface AuthScreenProps {
   onAuth: (userData: Partial<UserProgress>) => void;
@@ -74,51 +75,100 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
     }
   };
 
-  const handleFinalize = () => {
+  const handleFinalize = async () => {
+  setError("");
+
+  if (formData.pin.trim().length !== 4) {
+    setError("4 таңбалы ПИН-кодты енгізіңіз");
+    return;
+  }
+
+  // ✅ 1) Supabase-та тіркеу (auth.users)
+  const { data, error } = await supabase.auth.signUp({
+    email: formData.email.trim(),
+    password: formData.pass,
+  });
+
+  if (error) {
+    setError(error.message);
+    return;
+  }
+
+  const user = data.user;
+  if (!user) {
+    setError("User құрылмады. Тағы бір рет көріңіз.");
+    return;
+  }
+
+  // ✅ 2) profiles кестесіне жазу
+  const { error: profErr } = await supabase.from("profiles").upsert({
+    id: user.id,
+    email: user.email,
+    name: formData.name.trim(),
+    phone: formData.phone.trim(),
+    parent_phone: (formData as any).parentPhone
+      ? (formData as any).parentPhone.trim()
+      : null,
+    region: formData.region.trim(),
+    school: formData.school.trim(),
+    class: formData.class,
+    readiness: 0,
+  });
+
+  if (profErr) {
+    setError(profErr.message);
+    return;
+  }
+
+  // ✅ 3) localStorage + onAuth
+  const finalData: Partial<UserProgress> = {
+    name: formData.name.trim(),
+    email: formData.email.trim(),
+    phone: formData.phone.trim(),
+    region: formData.region.trim(),
+    school: formData.school.trim(),
+    class: formData.class,
+    pin: formData.pin.trim(),
+    chosenElectives:
+      formData.electives === "creative"
+        ? ["creative"]
+        : formData.electives.split("-"),
+  };
+
+  localStorage.setItem("smart_user_pin", formData.pin.trim());
+  localStorage.setItem("smart_user_name", formData.name.trim());
+  localStorage.setItem("smart_last_email", formData.email.trim());
+  localStorage.setItem("smart_user_session", JSON.stringify(finalData));
+
+  onAuth(finalData);
+};
+
+  const handleLogin = async () => {
+  try {
     setError("");
 
-    if (formData.pin.trim().length !== 4) {
-      setError("4 таңбалы ПИН-кодты енгізіңіз");
+    if (!formData.email || !formData.pass) {
+      setError("Email және құпия сөзді енгізіңіз");
       return;
     }
 
-    const finalData: Partial<UserProgress> = {
-      name: formData.name.trim(),
+    // ✅ Тек Supabase-тің нақты логині ғана өткізіледі
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: formData.email.trim(),
-      phone: formData.phone.trim(),
-      region: formData.region.trim(),
-      school: formData.school.trim(),
-      class: formData.class,
-      pin: formData.pin.trim(),
-      chosenElectives:
-        formData.electives === "creative" ? ["creative"] : formData.electives.split("-"),
-    };
+      password: formData.pass,
+    });
 
-    localStorage.setItem("smart_user_pin", formData.pin.trim());
-    localStorage.setItem("smart_user_name", formData.name.trim());
-    localStorage.setItem("smart_last_email", formData.email.trim());
-    localStorage.setItem("smart_user_session", JSON.stringify(finalData));
-
-    onAuth(finalData);
-  };
-
-  const handleLogin = () => {
-    setError("");
-
-    if (!formData.email.trim()) {
-      setError("Поштаны енгізіңіз");
+    if (error || !data.user) {
+      setError("Email немесе құпия сөз қате");
       return;
     }
 
-    localStorage.setItem("smart_last_email", formData.email.trim());
-
-    // Сендегі бұрынғы логикаң: email арқылы "Админ/Пайдаланушы" атауы
-    const name = formData.email.trim().toLowerCase() === "ernazarnurtay@gmail.com"
-      ? "Админ"
-      : "Пайдаланушы";
-
-    onAuth({ email: formData.email.trim(), name });
-  };
+    // ✅ Енді кіргізу - тек session арқылы
+    onAuth({ email: data.user.email || "" });
+  } catch (e) {
+    setError("Кіру кезінде қате шықты");
+  }
+};
 
   const handlePinDigit = (digit: string) => {
     setError("");

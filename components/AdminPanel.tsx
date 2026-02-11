@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { SUBJECTS } from "../constants";
 import type { Subject, SubjectId } from "../constants";
 import type { Module, Lesson, AppView, StaffMember, UserProgress } from "../types";
@@ -7,6 +7,7 @@ import type { Module, Lesson, AppView, StaffMember, UserProgress } from "../type
 import AdminPostsManager from "./AdminPostsManager";
 import AdminUniversitiesManager from "./AdminUniversitiesManager";
 import AdminAIHubManager from "./AdminAIHubManager";
+import AdminUsersManager from "./AdminUsersManager";
 
 interface AdminPanelProps {
   currentView?: AppView;
@@ -30,13 +31,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
+  const [lessonDraft, setLessonDraft] = useState<Lesson | null>(null);
+
+  useEffect(() => {
+    if (editingLesson) setLessonDraft({ ...editingLesson });
+    else setLessonDraft(null);
+  }, [editingLesson]);
+  const [editStep, setEditStep] = useState<0 | 1 | 2 | 3 | 4>(0);
+useEffect(() => {
+  if (editingLesson) setEditStep(0);
+}, [editingLesson]);
   const [isAddingModule, setIsAddingModule] = useState(false);
   const [newModuleTitle, setNewModuleTitle] = useState("");
 
   const [newStaffEmail, setNewStaffEmail] = useState("");
   const [newStaffName, setNewStaffName] = useState("");
   const [newStaffSubjects, setNewStaffSubjects] = useState<SubjectId[]>([]);
-
+  
   // ✅ super-admin логикасы
   const isSuperAdmin =
     user?.role === "super-admin" || user?.email === "nur.abuuadi@gmail.com";
@@ -109,20 +120,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!title) return;
 
     const newLesson: Lesson = {
-      id: `L-${Date.now()}`,
-      title,
-      isFree: false,
-      videoUrl: "",
-      presentationUrl: "",
-      analysisVideoUrl: "",
-      pdfSolutionUrl: "",
-      reinforcement: {
-        question: "Сұрақ?",
-        options: ["A", "B", "C", "D"],
-        correctAnswer: 0,
-      },
-      homework: [],
-    };
+  id: `L-${Date.now()}`,
+  title,
+  videoUrl: "",
+  transcript: "",
+  practiceHtml: "",
+  reinforcement: {
+    question: "Сұрақ?",
+    options: ["A", "B", "C", "D"],
+    correctAnswer: 0,
+  },
+  homeworkHtml: "",
+  homeworkPdfUrl: "",
+  homework: [],
+  fixesVideoUrl: "",
+  fixesPdfUrl: "",
+};
 
     const updated = {
       ...allModules,
@@ -140,29 +153,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleSaveLesson = () => {
-    if (!editingLesson || !selectedModuleId || !selectedSubject) return;
+  if (!lessonDraft || !selectedModuleId || !selectedSubject) return;
 
-    const updated = {
-      ...allModules,
-      [selectedSubject.id]: (allModules[selectedSubject.id] || []).map(
-        (m: Module) => {
-          if (m.id === selectedModuleId) {
-            return {
-              ...m,
-              lessons: m.lessons.map((l: Lesson) =>
-                l.id === editingLesson.id ? editingLesson : l
-              ),
-            };
-          }
-          return m;
-        }
-      ),
-    };
+  const updated = {
+    ...allModules,
+    [selectedSubject.id]: (allModules[selectedSubject.id] || []).map((m: Module) => {
+      if (m.id !== selectedModuleId) return m;
 
-    setAllModules(updated);
-    localStorage.setItem("smart_modules_db", JSON.stringify(updated));
-    alert("Өзгерістер сақталды!");
+      return {
+        ...m,
+        lessons: m.lessons.map((l: Lesson) => (l.id === lessonDraft.id ? lessonDraft : l)),
+      };
+    }),
   };
+
+  setAllModules(updated);
+  localStorage.setItem("smart_modules_db", JSON.stringify(updated));
+  alert("Өзгерістер сақталды!");
+  setEditingLesson(null); // модалды жабу
+};
 
   // ------------------ STAFF CRUD ------------------
   const handleAddStaff = () => {
@@ -202,6 +211,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       </div>
     );
   };
+{/* ===================== USERS ===================== */}
+{currentView === "admin-users" && (
+  <div className="space-y-8">
+    <header className="flex items-center justify-between">
+      <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 font-outfit">
+        Оқушылар
+      </h2>
+      <button
+        onClick={() => setView("admin")}
+        className="text-xs font-black uppercase text-gray-400 hover:text-indigo-600 transition-colors"
+      >
+        ← Артқа
+      </button>
+    </header>
+
+    <AdminUsersManager />
+  </div>
+)}
 
   return (
     <div className="pb-20 animate-in fade-in space-y-8">
@@ -674,43 +701,436 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       )}
 
       {/* ===================== LESSON EDIT MODAL ===================== */}
-      {editingLesson && (
-        <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-4xl min-h-[80vh] rounded-[40px] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in duration-300">
-            <header className="p-8 bg-slate-900 text-white flex justify-between items-center">
-              <div>
-                <h3 className="text-xl font-black font-outfit">{editingLesson.title}</h3>
-                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1">
-                  Сабақ контентін өңдеу
-                </p>
-              </div>
-              <div className="flex gap-4">
-                <button
-                  onClick={handleSaveLesson}
-                  className="bg-emerald-600 text-white px-8 py-3 rounded-2xl text-[10px] font-black uppercase shadow-lg shadow-emerald-900/20"
-                >
-                  Өзгерісті сақтау
-                </button>
-                <button
-                  onClick={() => setEditingLesson(null)}
-                  className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center hover:bg-red-500 transition-all"
-                >
-                  <i className="fas fa-times"></i>
-                </button>
-              </div>
-            </header>
+{editingLesson && (
+  <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-4">
+    <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[90vh] rounded-[40px] shadow-2xl overflow-hidden flex flex-col">
+      
+      {/* Header */}
+      <header className="p-6 md:p-8 bg-slate-900 text-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h3 className="text-xl md:text-2xl font-black font-outfit">
+            {lessonDraft?.title ?? editingLesson.title}
+          </h3>
+          <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold mt-1">
+            Сабақ контентін өңдеу
+          </p>
+        </div>
 
-            <div className="flex-1 p-10 space-y-8 overflow-y-auto no-scrollbar">
-              {/* ... сенің модалдың қалған бөлігі өзгеріссіз қалды ... */}
-              {/* Егер модалдың соңғы бөлігі тағы жіберілмесе де, бұл compile-ды бұзбайды */}
-              <div className="text-xs text-gray-400">
-                (Модалдың төменгі бөлігін сендегі күйінде қалдыра беруге болады)
-              </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setEditStep((s) => (s > 0 ? ((s - 1) as any) : s))}
+            className="px-6 py-3 rounded-2xl bg-white/10 hover:bg-white/20 font-black text-[10px] uppercase"
+          >
+            ← Алдыңғы
+          </button>
+
+          <button
+            onClick={() => setEditStep((s) => (s < 4 ? ((s + 1) as any) : s))}
+            className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-black text-[10px] uppercase"
+          >
+            Келесі →
+          </button>
+
+          <button
+            onClick={handleSaveLesson}
+            className="bg-emerald-600 text-white px-8 py-3 rounded-2xl text-[10px] font-black uppercase shadow-lg"
+          >
+            Өзгерісті сақтау
+          </button>
+
+          <button
+            onClick={() => setEditingLesson(null)}
+            className="px-6 py-3 rounded-2xl bg-white/10 hover:bg-white/20 font-black text-[10px] uppercase"
+          >
+            ← Артқа
+          </button>
+
+          <button
+            onClick={() => setEditingLesson(null)}
+            className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center hover:bg-red-500 transition-all"
+            aria-label="Close"
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+      </header>
+
+      {/* Body */}
+      <div className="flex-1 p-6 md:p-10 overflow-y-auto no-scrollbar">
+        {!lessonDraft ? (
+          <div className="text-slate-500 font-bold">Жүктелуде...</div>
+        ) : (
+          <div className="space-y-8">
+            {/* STEP 0: 0) атауы + 1) видео */}
+            {editStep === 0 && (
+              <>
+                {/* ===== 0) Негізгі ақпарат ===== */}
+                <section className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[30px] p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-lg font-black text-slate-900 dark:text-white">0) Сабақ атауы</h4>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Base</span>
+                  </div>
+
+                  <input
+                    value={lessonDraft.title}
+                    onChange={(e) => setLessonDraft((p) => (p ? { ...p, title: e.target.value } : p))}
+                    placeholder="Сабақ атауы"
+                    className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold outline-none"
+                  />
+                </section>
+
+                {/* ===== 1) Видео ===== */}
+                <section className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[30px] p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-lg font-black text-slate-900 dark:text-white">1) Сабақ видеосы</h4>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Video</span>
+                  </div>
+
+                  <input
+                    value={lessonDraft.videoUrl ?? ""}
+                    onChange={(e) => setLessonDraft((p) => (p ? { ...p, videoUrl: e.target.value } : p))}
+                    placeholder="YouTube embed URL (мыс: https://www.youtube.com/embed/...)"
+                    className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold outline-none"
+                  />
+
+                  {!!lessonDraft.videoUrl && (
+                    <div className="aspect-video rounded-2xl overflow-hidden bg-black">
+                      <iframe className="w-full h-full" src={lessonDraft.videoUrl} allowFullScreen title="lesson-video" />
+                    </div>
+                  )}
+                </section>
+              </>
+            )}
+
+            {/* STEP 1: 2) бекіту */}
+            {editStep === 1 && (
+              <>
+                {/* ===== 2) Бекіту (reinforcement) ===== */}
+                <section className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[30px] p-6 space-y-4">
+  <div className="flex items-center justify-between">
+    <h4 className="text-lg font-black text-slate-900 dark:text-white">2) Бекіту тапсырмалары</h4>
+
+    <button
+      onClick={() =>
+        setLessonDraft((p) => {
+          if (!p) return p;
+          const list = [...(p.reinforcementItems ?? [])];
+          list.push({ question: "Сұрақ...", options: ["A", "B", "C", "D"], correctAnswer: 0 });
+          return { ...p, reinforcementItems: list };
+        })
+      }
+      className="text-[10px] font-black uppercase tracking-widest text-emerald-600"
+    >
+      + Сұрақ қосу
+    </button>
+  </div>
+
+  {(lessonDraft.reinforcementItems ?? []).length === 0 ? (
+    <div className="text-slate-400 font-bold text-sm">
+      Бекіту сұрақтары жоқ. “Сұрақ қосу” бас.
+    </div>
+  ) : (
+    <div className="space-y-4">
+      {lessonDraft.reinforcementItems!.map((q, qi) => (
+        <div
+          key={qi}
+          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-3"
+        >
+          <div className="flex items-center justify-between">
+            <div className="font-black text-slate-700 dark:text-slate-200">
+              Сұрақ #{qi + 1}
             </div>
+
+            <button
+              onClick={() =>
+                setLessonDraft((p) => {
+                  if (!p) return p;
+                  const list = (p.reinforcementItems ?? []).filter((_, i) => i !== qi);
+                  return { ...p, reinforcementItems: list };
+                })
+              }
+              className="text-[10px] font-black uppercase tracking-widest text-rose-600"
+            >
+              Өшіру
+            </button>
+          </div>
+
+          <input
+            value={q.question ?? ""}
+            onChange={(e) =>
+              setLessonDraft((p) => {
+                if (!p) return p;
+                const list = [...(p.reinforcementItems ?? [])];
+                list[qi] = { ...list[qi], question: e.target.value };
+                return { ...p, reinforcementItems: list };
+              })
+            }
+            placeholder="Сұрақ мәтіні"
+            className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-bold outline-none"
+          />
+
+          <div className="grid md:grid-cols-2 gap-2">
+            {[0, 1, 2, 3].map((oi) => (
+              <input
+                key={oi}
+                value={q.options?.[oi] ?? ""}
+                onChange={(e) =>
+                  setLessonDraft((p) => {
+                    if (!p) return p;
+                    const list = [...(p.reinforcementItems ?? [])];
+                    const item = list[qi] ?? { question: "", options: ["", "", "", ""], correctAnswer: 0 };
+                    const opts = [...(item.options ?? ["", "", "", ""])];
+                    opts[oi] = e.target.value;
+                    list[qi] = { ...item, options: opts };
+                    return { ...p, reinforcementItems: list };
+                  })
+                }
+                placeholder={`Жауап ${oi + 1}`}
+                className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-bold outline-none"
+              />
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-black text-slate-700 dark:text-slate-200">Дұрыс жауап:</span>
+            <select
+              value={q.correctAnswer ?? 0}
+              onChange={(e) =>
+                setLessonDraft((p) => {
+                  if (!p) return p;
+                  const list = [...(p.reinforcementItems ?? [])];
+                  list[qi] = { ...list[qi], correctAnswer: Number(e.target.value) };
+                  return { ...p, reinforcementItems: list };
+                })
+              }
+              className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold outline-none"
+            >
+              <option value={0}>1</option>
+              <option value={1}>2</option>
+              <option value={2}>3</option>
+              <option value={3}>4</option>
+            </select>
+
+            {/* реттеу: жоғары/төмен жылжыту */}
+            <button
+              onClick={() =>
+                setLessonDraft((p) => {
+                  if (!p) return p;
+                  const list = [...(p.reinforcementItems ?? [])];
+                  if (qi === 0) return p;
+                  [list[qi - 1], list[qi]] = [list[qi], list[qi - 1]];
+                  return { ...p, reinforcementItems: list };
+                })
+              }
+              className="ml-auto text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-800 dark:hover:text-white"
+            >
+              ↑
+            </button>
+            <button
+              onClick={() =>
+                setLessonDraft((p) => {
+                  if (!p) return p;
+                  const list = [...(p.reinforcementItems ?? [])];
+                  if (qi >= list.length - 1) return p;
+                  [list[qi + 1], list[qi]] = [list[qi], list[qi + 1]];
+                  return { ...p, reinforcementItems: list };
+                })
+              }
+              className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-800 dark:hover:text-white"
+            >
+              ↓
+            </button>
           </div>
         </div>
-      )}
+      ))}
     </div>
+  )}
+               </section>
+              </>
+            )}
+
+            {/* STEP 2: 3) Үй жұмысы */}
+            {editStep === 2 && (
+              <>
+                {/* ===== 3) Үй жұмысы (мәтін + PDF) ===== */}
+                <section className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[30px] p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-lg font-black text-slate-900 dark:text-white">3) Үй жұмысы</h4>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Homework</span>
+                  </div>
+
+                  <textarea
+                    value={lessonDraft.homeworkHtml ?? ""}
+                    onChange={(e) => setLessonDraft((p) => (p ? { ...p, homeworkHtml: e.target.value } : p))}
+                    placeholder="Үй жұмысы мәтіні (HTML/мәтін)"
+                    className="w-full min-h-[180px] p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold outline-none"
+                  />
+
+                  <input
+                    value={lessonDraft.homeworkPdfUrl ?? ""}
+                    onChange={(e) => setLessonDraft((p) => (p ? { ...p, homeworkPdfUrl: e.target.value } : p))}
+                    placeholder="Үй жұмысы PDF URL (public link)"
+                    className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold outline-none"
+                  />
+                </section>
+              </>
+            )}
+
+            {/* STEP 3: 3.1) тесттер */}
+            {editStep === 3 && (
+              <>
+                {/* ===== 3.1) Үй жұмысы тесттері ===== */}
+                <section className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[30px] p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-lg font-black text-slate-900 dark:text-white">3.1) Үй жұмысы тесттері</h4>
+
+                    <button
+                      onClick={() =>
+                        setLessonDraft((p) => {
+                          if (!p) return p;
+                          const next = {
+                            id: `HW-${Date.now()}`,
+                            question: "Сұрақ...",
+                            options: ["A", "B", "C", "D"],
+                            correctAnswer: 0,
+                          };
+                          return { ...p, homework: [...(p.homework ?? []), next] };
+                        })
+                      }
+                      className="text-[10px] font-black uppercase tracking-widest text-emerald-600"
+                    >
+                      + Тест қосу
+                    </button>
+                  </div>
+
+                  {(lessonDraft.homework ?? []).length === 0 ? (
+                    <div className="text-slate-400 font-bold text-sm">
+                      Тест жоқ. “Тест қосу” бассаң, оқушыға auto-check болады.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {lessonDraft.homework.map((it, idx) => (
+                        <div
+                          key={it.id}
+                          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="font-black text-slate-700 dark:text-slate-200">Тест #{idx + 1}</div>
+                            <button
+                              onClick={() =>
+                                setLessonDraft((p) => {
+                                  if (!p) return p;
+                                  return { ...p, homework: p.homework.filter((x) => x.id !== it.id) };
+                                })
+                              }
+                              className="text-[10px] font-black uppercase tracking-widest text-rose-600"
+                            >
+                              Өшіру
+                            </button>
+                          </div>
+
+                          <input
+                            value={it.question ?? it.text ?? ""}
+                            onChange={(e) =>
+                              setLessonDraft((p) => {
+                                if (!p) return p;
+                                const hw = p.homework.map((x) => (x.id === it.id ? { ...x, question: e.target.value } : x));
+                                return { ...p, homework: hw };
+                              })
+                            }
+                            className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-bold outline-none"
+                            placeholder="Сұрақ"
+                          />
+
+                          <div className="grid md:grid-cols-2 gap-2">
+                            {it.options.map((opt, oi) => (
+                              <input
+                                key={oi}
+                                value={opt}
+                                onChange={(e) =>
+                                  setLessonDraft((p) => {
+                                    if (!p) return p;
+                                    const hw = p.homework.map((x) => {
+                                      if (x.id !== it.id) return x;
+                                      const opts = [...x.options];
+                                      opts[oi] = e.target.value;
+                                      return { ...x, options: opts };
+                                    });
+                                    return { ...p, homework: hw };
+                                  })
+                                }
+                                className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-bold outline-none"
+                                placeholder={`Жауап ${oi + 1}`}
+                              />
+                            ))}
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-black text-slate-700 dark:text-slate-200">Дұрыс:</span>
+                            <select
+                              value={it.correctAnswer}
+                              onChange={(e) =>
+                                setLessonDraft((p) => {
+                                  if (!p) return p;
+                                  const hw = p.homework.map((x) =>
+                                    x.id === it.id ? { ...x, correctAnswer: Number(e.target.value) } : x
+                                  );
+                                  return { ...p, homework: hw };
+                                })
+                              }
+                              className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold outline-none"
+                            >
+                              <option value={0}>1</option>
+                              <option value={1}>2</option>
+                              <option value={2}>3</option>
+                              <option value={3}>4</option>
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </>
+            )}
+
+            {/* STEP 4: 4) Қатемен жұмыс */}
+            {editStep === 4 && (
+              <>
+                {/* ===== 4) Қатемен жұмыс ===== */}
+                <section className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[30px] p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-lg font-black text-slate-900 dark:text-white">4) Қатемен жұмыс</h4>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fixes</span>
+                  </div>
+
+                  <input
+                    value={lessonDraft.fixesVideoUrl ?? ""}
+                    onChange={(e) => setLessonDraft((p) => (p ? { ...p, fixesVideoUrl: e.target.value } : p))}
+                    placeholder="Қатемен жұмыс видео URL (embed)"
+                    className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold outline-none"
+                  />
+
+                  <input
+                    value={lessonDraft.fixesPdfUrl ?? ""}
+                    onChange={(e) => setLessonDraft((p) => (p ? { ...p, fixesPdfUrl: e.target.value } : p))}
+                    placeholder="Қатемен жұмыс PDF URL"
+                    className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-bold outline-none"
+                  />
+                </section>
+
+                <div className="text-xs text-slate-400 font-bold">
+                  Кеңес: Видео үшін embed сілтеме қолдан (youtube.com/embed/...). PDF үшін public link керек.
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+</div>
   );
 };
 
