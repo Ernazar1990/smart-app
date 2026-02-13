@@ -55,14 +55,24 @@ export type HomeworkItem = {
 };
 
 export type ReinforcementQuestion = {
+  id: string;
   question: string;
   options: string[];
-  correctAnswer: number;
+  answerIndex: number; // дұрыс жауап индексі
+  explanation?: string;
 };
 
-export type Lesson = {
+export interface Lesson {
   id: string;
   title: string;
+  content: string;
+
+  // ✅ қос
+  reinforcement?: {
+    enabled?: boolean;
+    questions?: ReinforcementQuestion[];
+    passScore?: number; // 0..100
+  };
 
   // 1) Негізгі видео
   videoUrl?: string;
