@@ -816,7 +816,7 @@ useEffect(() => {
         setLessonDraft((p) => {
           if (!p) return p;
           const list = [...(p.reinforcementItems ?? [])];
-          list.push({ question: "Сұрақ...", options: ["A", "B", "C", "D"], correctAnswer: 0 });
+          list.push({ id: `RQ-${Date.now()}`, question: "Сұрақ...", options: ["A", "B", "C", "D"], correctAnswer: 0 });
           return { ...p, reinforcementItems: list };
         })
       }
