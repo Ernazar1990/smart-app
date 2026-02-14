@@ -34,7 +34,7 @@ import TestView from "./components/TestView";
 import type { AppView, UserProgress, Lesson, Module, StaffMember, UserMarathon } from "./types";
 import { SUBJECTS, MODULES_BY_SUBJECT } from "./constants";
 
-const normalizeAllModules = (modules: Record<string, Module[]>): Record<string, Module[]> => {
+const normalize= (modules: Record<string, Module[]>): Record<string, Module[]> => {
   const normalized: Record<string, Module[]> = {};
   
   for (const [key, value] of Object.entries(modules)) {
@@ -57,17 +57,23 @@ const App: React.FC = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   const [allModules, setAllModules] = useState<Record<string, Module[]>>(() => {
-    const saved = localStorage.getItem("smart_modules_db");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return { ...(MODULES_BY_SUBJECT as any), ...(parsed || {}) };
-      } catch {
-        return MODULES_BY_SUBJECT as any;
-      }
-    }
-    return MODULES_BY_SUBJECT as any;
-  });
+  const saved = localStorage.getItem("smart_modules_db");
+
+  // 1) база (constants)
+  const base = MODULES_BY_SUBJECT as any;
+
+  // 2) saved жоқ болса — база
+  if (!saved) return base;
+
+  try {
+    const parsed = JSON.parse(saved);
+    const merged = { ...base, ...(parsed || {}) };
+    const normalized = normalizeAllModules(merged);
+    return normalized;
+  } catch {
+    return base;
+  }
+});
 
   const [staffList, setStaffList] = useState<StaffMember[]>(() => {
     const saved = localStorage.getItem("smart_staff_db");
@@ -157,23 +163,6 @@ const App: React.FC = () => {
     setIsLoggedIn(true);
     localStorage.setItem("smart_user_session", JSON.stringify(newUser));
   };
-
-  // Restore LocalStorage session
-useEffect(() => {
-  const saved = localStorage.getItem("smart_modules_db");
-  if (!saved) return;
-
-  try {
-    const raw = JSON.parse(saved);
-    const normalized = normalizeAllModules(raw);
-
-    setAllModules(normalized);
-    // ✅ бір рет жаңартып қайта сақтап қоямыз (енді бәрі жаңа форматта)
-    localStorage.setItem("smart_modules_db", JSON.stringify(normalized));
-  } catch (e) {
-    console.error("modules parse error", e);
-  }
-}, []);
 
   // Supabase session auto login
   useEffect(() => {
@@ -398,3 +387,7 @@ useEffect(() => {
 };
 
 export default App;
+function normalizeAllModules(merged: any) {
+  throw new Error("Function not implemented.");
+}
+
