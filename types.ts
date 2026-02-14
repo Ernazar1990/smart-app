@@ -58,7 +58,11 @@ export type ReinforcementQuestion = {
   id: string;
   question: string;
   options: string[];
-  answerIndex: number; // дұрыс жауап индексі
+
+  // Екеуін де қолдаймыз (ескі/жаңа кодпен үйлесу үшін)
+  correctAnswer?: number;  // 0..n-1
+  answerIndex?: number;    // 0..n-1
+
   explanation?: string;
 };
 
