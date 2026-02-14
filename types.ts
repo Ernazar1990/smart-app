@@ -60,7 +60,7 @@ export type ReinforcementQuestion = {
   options: string[];
 
   // Екеуін де қолдаймыз (ескі/жаңа кодпен үйлесу үшін)
-  correctAnswer?: number;  // 0..n-1
+  correctAnswer: number;   // 0..n-1
   answerIndex?: number;    // 0..n-1
 
   explanation?: string;

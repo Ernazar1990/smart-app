@@ -34,6 +34,18 @@ import TestView from "./components/TestView";
 import type { AppView, UserProgress, Lesson, Module, StaffMember, UserMarathon } from "./types";
 import { SUBJECTS, MODULES_BY_SUBJECT } from "./constants";
 
+const normalizeAllModules = (modules: Record<string, Module[]>): Record<string, Module[]> => {
+  const normalized: Record<string, Module[]> = {};
+  
+  for (const [key, value] of Object.entries(modules)) {
+    if (Array.isArray(value)) {
+      normalized[key] = value;
+    }
+  }
+  
+  return normalized;
+};
+
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentView, setCurrentView] = useState<AppView>("home");
@@ -147,24 +159,21 @@ const App: React.FC = () => {
   };
 
   // Restore LocalStorage session
-  useEffect(() => {
-    const savedSession = localStorage.getItem("smart_user_session");
-    if (savedSession && savedSession !== "undefined" && savedSession !== "null") {
-      try {
-        const parsed = JSON.parse(savedSession);
-        if (parsed && typeof parsed === "object") {
-          const staff = staffList.find((s: any) => (s.email || "").toLowerCase() === (parsed.email || "").toLowerCase());
-          parsed.isAdmin = !!staff;
-          parsed.role = staff?.role || "student";
-          parsed.permissions = staff?.permissions || [];
-          setUser(parsed);
-          setIsLoggedIn(true);
-        }
-      } catch (e) {
-        console.error("Session restoration error", e);
-      }
-    }
-  }, [staffList]);
+useEffect(() => {
+  const saved = localStorage.getItem("smart_modules_db");
+  if (!saved) return;
+
+  try {
+    const raw = JSON.parse(saved);
+    const normalized = normalizeAllModules(raw);
+
+    setAllModules(normalized);
+    // ✅ бір рет жаңартып қайта сақтап қоямыз (енді бәрі жаңа форматта)
+    localStorage.setItem("smart_modules_db", JSON.stringify(normalized));
+  } catch (e) {
+    console.error("modules parse error", e);
+  }
+}, []);
 
   // Supabase session auto login
   useEffect(() => {

@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { SUBJECTS } from "../constants";
 import type { Subject, SubjectId } from "../constants";
-import type { Module, Lesson, AppView, StaffMember, UserProgress } from "../types";
+import type { Module, Lesson, AppView, StaffMember, UserProgress, ReinforcementQuestion } from "../types";
 
 // ✅ Осы 3 компонент сенде болуы керек:
 import AdminPostsManager from "./AdminPostsManager";
@@ -127,10 +127,17 @@ useEffect(() => {
   transcript: "",
   practiceHtml: "",
   reinforcement: {
-  enabled: true,
-  questions: [],
-  passScore: 70,
-},
+    enabled: true,
+    questions: [
+      {
+        id: `RQ-${Date.now()}`,
+        question: "Сұрақ?",
+        options: ["A", "B", "C", "D"],
+        correctAnswer: 0,
+      }
+    ],
+    passScore: 0,
+  },
   homeworkHtml: "",
   homeworkPdfUrl: "",
   homework: [],
@@ -806,17 +813,27 @@ useEffect(() => {
             {/* STEP 1: 2) бекіту */}
             {editStep === 1 && (
               <>
-                {/* ===== 2) Бекіту (reinforcement) ===== */}
-                <section className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[30px] p-6 space-y-4">
+{/* ===== 2) Бекіту (reinforcementItems) ===== */}
+<section className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[30px] p-6 space-y-4">
   <div className="flex items-center justify-between">
-    <h4 className="text-lg font-black text-slate-900 dark:text-white">2) Бекіту тапсырмалары</h4>
+    <h4 className="text-lg font-black text-slate-900 dark:text-white">
+      2) Бекіту тапсырмалары
+    </h4>
 
     <button
+      type="button"
       onClick={() =>
-        setLessonDraft((p) => {
+        setLessonDraft((p: Lesson | null) => {
           if (!p) return p;
-          const list = [...(p.reinforcementItems ?? [])];
-          list.push({ id: `RQ-${Date.now()}`, question: "Сұрақ...", options: ["A", "B", "C", "D"], correctAnswer: 0 });
+
+          const list: ReinforcementQuestion[] = [...(p.reinforcementItems ?? [])];
+          list.push({
+            id: `RQ-${Date.now()}`,
+            question: "Сұрақ...",
+            options: ["A", "B", "C", "D"],
+            correctAnswer: 0,
+          });
+
           return { ...p, reinforcementItems: list };
         })
       }
@@ -826,15 +843,15 @@ useEffect(() => {
     </button>
   </div>
 
-  {(lessonDraft.reinforcementItems ?? []).length === 0 ? (
+  {((lessonDraft?.reinforcementItems ?? []) as ReinforcementQuestion[]).length === 0 ? (
     <div className="text-slate-400 font-bold text-sm">
       Бекіту сұрақтары жоқ. “Сұрақ қосу” бас.
     </div>
   ) : (
     <div className="space-y-4">
-      {lessonDraft.reinforcementItems!.map((q, qi) => (
+      {(lessonDraft?.reinforcementItems ?? []).map((q: ReinforcementQuestion, qi: number) => (
         <div
-          key={qi}
+          key={q.id ?? `qi-${qi}`}
           className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-3"
         >
           <div className="flex items-center justify-between">
@@ -843,10 +860,11 @@ useEffect(() => {
             </div>
 
             <button
+              type="button"
               onClick={() =>
-                setLessonDraft((p) => {
+                setLessonDraft((p: Lesson | null) => {
                   if (!p) return p;
-                  const list = (p.reinforcementItems ?? []).filter((_, i) => i !== qi);
+                  const list = (p.reinforcementItems ?? []).filter((_: ReinforcementQuestion, i: number) => i !== qi);
                   return { ...p, reinforcementItems: list };
                 })
               }
@@ -859,10 +877,14 @@ useEffect(() => {
           <input
             value={q.question ?? ""}
             onChange={(e) =>
-              setLessonDraft((p) => {
+              setLessonDraft((p: Lesson | null) => {
                 if (!p) return p;
-                const list = [...(p.reinforcementItems ?? [])];
-                list[qi] = { ...list[qi], question: e.target.value };
+
+                const list: ReinforcementQuestion[] = [...(p.reinforcementItems ?? [])];
+                const item: ReinforcementQuestion =
+                  list[qi] ?? { id: `RQ-${Date.now()}`, question: "", options: ["", "", "", ""], correctAnswer: 0 };
+
+                list[qi] = { ...item, question: e.target.value };
                 return { ...p, reinforcementItems: list };
               })
             }
@@ -871,17 +893,22 @@ useEffect(() => {
           />
 
           <div className="grid md:grid-cols-2 gap-2">
-            {[0, 1, 2, 3].map((oi) => (
+            {[0, 1, 2, 3].map((oi: number) => (
               <input
                 key={oi}
                 value={q.options?.[oi] ?? ""}
                 onChange={(e) =>
-                  setLessonDraft((p) => {
+                  setLessonDraft((p: Lesson | null) => {
                     if (!p) return p;
-                    const list = [...(p.reinforcementItems ?? [])];
-                    const item = list[qi] ?? { question: "", options: ["", "", "", ""], correctAnswer: 0 };
+
+                    const list: ReinforcementQuestion[] = [...(p.reinforcementItems ?? [])];
+                    const item: ReinforcementQuestion =
+                      list[qi] ?? { id: `RQ-${Date.now()}`, question: "", options: ["", "", "", ""], correctAnswer: 0 };
+
                     const opts = [...(item.options ?? ["", "", "", ""])];
+                    while (opts.length < 4) opts.push("");
                     opts[oi] = e.target.value;
+
                     list[qi] = { ...item, options: opts };
                     return { ...p, reinforcementItems: list };
                   })
@@ -893,14 +920,21 @@ useEffect(() => {
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-sm font-black text-slate-700 dark:text-slate-200">Дұрыс жауап:</span>
+            <span className="text-sm font-black text-slate-700 dark:text-slate-200">
+              Дұрыс жауап:
+            </span>
+
             <select
-              value={q.correctAnswer ?? 0}
+              value={typeof q.correctAnswer === "number" ? q.correctAnswer : 0}
               onChange={(e) =>
-                setLessonDraft((p) => {
+                setLessonDraft((p: Lesson | null) => {
                   if (!p) return p;
-                  const list = [...(p.reinforcementItems ?? [])];
-                  list[qi] = { ...list[qi], correctAnswer: Number(e.target.value) };
+
+                  const list: ReinforcementQuestion[] = [...(p.reinforcementItems ?? [])];
+                  const item: ReinforcementQuestion =
+                    list[qi] ?? { id: `RQ-${Date.now()}`, question: "", options: ["", "", "", ""], correctAnswer: 0 };
+
+                  list[qi] = { ...item, correctAnswer: Number(e.target.value) };
                   return { ...p, reinforcementItems: list };
                 })
               }
@@ -914,11 +948,14 @@ useEffect(() => {
 
             {/* реттеу: жоғары/төмен жылжыту */}
             <button
+              type="button"
               onClick={() =>
-                setLessonDraft((p) => {
+                setLessonDraft((p: Lesson | null) => {
                   if (!p) return p;
-                  const list = [...(p.reinforcementItems ?? [])];
+
+                  const list: ReinforcementQuestion[] = [...(p.reinforcementItems ?? [])];
                   if (qi === 0) return p;
+
                   [list[qi - 1], list[qi]] = [list[qi], list[qi - 1]];
                   return { ...p, reinforcementItems: list };
                 })
@@ -927,12 +964,16 @@ useEffect(() => {
             >
               ↑
             </button>
+
             <button
+              type="button"
               onClick={() =>
-                setLessonDraft((p) => {
+                setLessonDraft((p: Lesson | null) => {
                   if (!p) return p;
-                  const list = [...(p.reinforcementItems ?? [])];
+
+                  const list: ReinforcementQuestion[] = [...(p.reinforcementItems ?? [])];
                   if (qi >= list.length - 1) return p;
+
                   [list[qi + 1], list[qi]] = [list[qi], list[qi + 1]];
                   return { ...p, reinforcementItems: list };
                 })
