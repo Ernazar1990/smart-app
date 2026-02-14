@@ -102,6 +102,7 @@ export type Module = {
   id: string;
   title: string;
   weekNumber?: number;
+   lessons: Lesson[];
 };
 // ---------------- STAFF / USER ----------------
 export type StaffMember = {
