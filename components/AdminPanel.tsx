@@ -122,6 +122,7 @@ useEffect(() => {
     const newLesson: Lesson = {
   id: `L-${Date.now()}`,
   title,
+  content: "",
   videoUrl: "",
   transcript: "",
   practiceHtml: "",
