@@ -1,21 +1,41 @@
-export async function getChemistryExplanation(
-  userPrompt: string,
-  history?: { role: string; content: string }[]
-): Promise<string> {
-  const res = await fetch('/api/gemini', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      prompt: userPrompt,
-      history,
-    }),
-  });
+import { GoogleGenAI } from "@google/genai";
 
-  const data = await res.json();
+export const getProjectBotResponse = async (userPrompt: string) => {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
 
-  if (!res.ok) {
-    throw new Error(data?.error || 'AI қатесі');
+  if (!apiKey || apiKey === "" || apiKey === "undefined") {
+    return "Қате: Байланыс орнату мүмкін емес. Жүйе әкімшісіне хабарласыңыз.";
   }
 
-  return data.text || 'Жауап алынбады';
-}
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: [
+        {
+          parts: [{
+            text: `Сіз "Smart App" (ҰБТ-ға дайындық платформасы) бойынша виртуалды көмекшісіз. 
+            Платформа туралы ақпарат:
+            - Мақсаты: Оқушыларды ҰБТ-ға (Химия, Биология және т.б.) дайындау.
+            - Құрылымы: Әр пән бойынша тараулар (модульдер) бар. Мысалы, Химияда 22 тарау бар.
+            - Сабақтар: Әр тарауда Теория, Есептер шығару және Тест талдауы бар.
+            - Құралдар: Периодтық кесте, Ерігіштік кестесі, Формулалар хабы, Терминдер (Глоссарий), Реакция теңестіру құралы бар.
+            - Жазылым (Subscription): Тегін нұсқада әр пәннен алғашқы 5 сабақ ашық. Толық курсты алу үшін "Премиум" жазылымы қажет.
+            - Премиум артықшылықтары: Барлық сабақтарға шексіз қолжетімділік, куратор көмегі, толық тесттер.
+            
+            Оқушының сұрақтарына тек осы платформа аясында, қазақ тілінде, сыпайы жауап беріңіз. Егер сұрақ платформаға қатысты болмаса, оны платформамен байланыстыруға тырысыңыз.
+            
+            Сұрақ: ${userPrompt}`
+          }]
+        }
+      ],
+      config: {
+        temperature: 0.5,
+      }
+    });
+    
+    return response.text || "Жауап алу мүмкін болмады.";
+  } catch (error: any) {
+    return "Сервермен байланыс үзілді. Қайта көріңіз.";
+  }
+};

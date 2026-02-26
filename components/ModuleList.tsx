@@ -1,5 +1,19 @@
-import React, { useMemo, useState } from "react";
-import { Module, UserProgress, Subject } from "../types";
+
+import React, { useState } from 'react';
+import { Module, UserProgress, Subject, Lesson } from '../types';
+import { 
+  ArrowLeft, 
+  BookOpen, 
+  CheckCircle, 
+  BarChart3, 
+  Coins, 
+  ChevronDown, 
+  Play, 
+  Lock,
+  Clock,
+  Eye,
+  ChevronRight
+} from 'lucide-react';
 
 interface ModuleListProps {
   user: UserProgress;
@@ -10,82 +24,44 @@ interface ModuleListProps {
   onSelectSubject: (id: string) => void;
 }
 
-const ModuleList: React.FC<ModuleListProps> = ({
-  user,
-  onSelectLesson,
-  modules,
-  subjects,
-  selectedSubjectId,
-  onSelectSubject,
-}) => {
+const ModuleList: React.FC<ModuleListProps> = ({ user, onSelectLesson, modules, subjects, selectedSubjectId, onSelectSubject }) => {
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
 
-  // ✅ safety: user.completedLessons жоқ болса — бос массив
-  const completedLessons = useMemo(
-    () => (Array.isArray((user as any)?.completedLessons) ? (user as any).completedLessons : []),
-    [user]
+  const mySubjects = subjects.filter(sub => 
+    !sub.isElective || user.chosenElectives.includes(sub.id)
   );
 
-  // ✅ safety: modules жоқ болса — бос массив
-  const safeModules = useMemo(() => {
-    const list = Array.isArray(modules) ? modules : [];
-    return list.map((m: any) => ({
-      ...m,
-      lessons: Array.isArray(m?.lessons) ? m.lessons : [],
-    }));
-  }, [modules]);
-
-  const mySubjects = useMemo(() => {
-    const chosen = Array.isArray((user as any)?.chosenElectives) ? (user as any).chosenElectives : [];
-    return (Array.isArray(subjects) ? subjects : []).filter((sub: any) => !sub.isElective || chosen.includes(sub.id));
-  }, [subjects, user]);
-
   const toggleModule = (modId: string) => {
-    setExpandedModule((prev) => (prev === modId ? null : modId));
+    setExpandedModule(expandedModule === modId ? null : modId);
   };
 
   if (!selectedSubjectId) {
     return (
-      <div className="space-y-8 pb-32 animate-in fade-in duration-500">
+      <div className="space-y-8 pb-20 animate-in fade-in duration-500">
         <header className="px-2">
-          <h2 className="text-3xl font-black text-gray-900 dark:text-white font-outfit tracking-tight">
-            Дайындық 📚
-          </h2>
-          <p className="text-gray-500 dark:text-slate-500 text-sm mt-1">
-            Оқуды жалғастыру үшін пәнді таңдаңыз.
-          </p>
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white font-outfit tracking-tight">Дайындық</h2>
+          <p className="text-slate-500 dark:text-slate-500 text-xs mt-1">Оқу жоспарыңыз бен таңдалған пәндеріңіз.</p>
         </header>
 
         <section className="space-y-4">
           <div className="flex justify-between items-end px-2">
-            <h4 className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-              Менің курстарым
-            </h4>
+            <h4 className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Менің пәндерім</h4>
           </div>
-
           <div className="grid grid-cols-1 gap-3">
-            {mySubjects.map((sub: any) => (
+            {mySubjects.map((sub) => (
               <button
                 key={sub.id}
                 onClick={() => onSelectSubject(sub.id)}
-                className="bg-white dark:bg-slate-800 p-6 rounded-[40px] border border-gray-100 dark:border-slate-700 shadow-sm flex items-center gap-5 hover:border-emerald-500 dark:hover:border-emerald-400 transition-all text-left group"
+                className="bg-white dark:bg-slate-800 p-5 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm flex items-center gap-5 hover:border-indigo-500 dark:hover:border-indigo-400 transition-all text-left group"
               >
-                <div
-                  className={`${sub.color ?? "bg-emerald-600"} w-16 h-16 rounded-[24px] flex items-center justify-center text-white text-2xl shadow-lg group-hover:scale-105 transition-transform`}
-                >
-                  <i className={`fas ${sub.icon ?? "fa-book"}`}></i>
+                <div className={`${sub.color} w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg group-hover:scale-105 transition-transform`}>
+                  <i className={`fas ${sub.icon}`}></i>
                 </div>
-
                 <div className="flex-1">
-                  <h5 className="font-black text-gray-900 dark:text-slate-100 text-lg font-outfit">
-                    {sub.name ?? sub.title ?? "Пән"}
-                  </h5>
-                  <p className="text-[10px] text-gray-400 uppercase font-black">
-                    {safeModules.length} модуль
-                  </p>
+                  <h5 className="font-black text-slate-900 dark:text-slate-100 text-base font-outfit">{sub.name}</h5>
+                  <p className="text-[9px] text-slate-400 uppercase font-black mt-0.5">Бағдарлама бойынша оқу</p>
                 </div>
-
-                <i className="fas fa-chevron-right text-gray-200 dark:text-slate-700 group-hover:translate-x-1 transition-transform"></i>
+                <ChevronRight size={18} className="text-slate-200 dark:text-slate-700 group-hover:translate-x-1 transition-transform" />
               </button>
             ))}
           </div>
@@ -94,117 +70,168 @@ const ModuleList: React.FC<ModuleListProps> = ({
     );
   }
 
-  return (
-    <div className="space-y-6 pb-24 animate-in fade-in">
-      <header className="space-y-2">
-        <button
-          onClick={() => onSelectSubject("")}
-          className="flex items-center gap-2 text-gray-400 font-black text-[10px] uppercase tracking-widest mb-2"
-        >
-          <i className="fas fa-arrow-left"></i> Пәндерге оралу
-        </button>
+  const totalLessons = modules.reduce((acc, mod) => acc + mod.lessons.length, 0);
+  const completedLessonsCount = modules.reduce((acc, mod) => acc + mod.lessons.filter(l => user.completedLessons.includes(l.id)).length, 0);
+  const progressPercent = totalLessons > 0 ? Math.round((completedLessonsCount / totalLessons) * 100) : 0;
 
-        <h2 className="text-3xl font-black text-gray-900 dark:text-white font-outfit">
-          Оқу жоспары
-        </h2>
-        <p className="text-sm text-gray-500">
-          Модульді басып, сабақтар тізімін көріңіз
-        </p>
+  const currentSubject = subjects.find(s => s.id === selectedSubjectId);
+  const isSubjectChosen = currentSubject && (!currentSubject.isElective || user.chosenElectives.includes(currentSubject.id));
+
+  return (
+    <div className="space-y-8 pb-20 animate-in fade-in">
+      <header className="space-y-6">
+        <button onClick={() => onSelectSubject('')} className="flex items-center gap-2 text-slate-400 font-black text-[9px] uppercase tracking-widest mb-1 group">
+          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" /> Пәндерге оралу
+        </button>
+        
+        {!isSubjectChosen && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 p-6 rounded-[32px] border border-amber-100 dark:border-amber-800/50 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-amber-500 text-white rounded-2xl flex items-center justify-center shadow-lg">
+                <Eye size={24} />
+              </div>
+              <div>
+                <h4 className="font-black text-slate-800 dark:text-white font-outfit">Шолу режимі</h4>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">Бұл пән сіздің таңдау пәндеріңізге кірмейді.</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => onSelectSubject('')}
+              className="bg-amber-500 text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-105 transition-all"
+            >
+              Пәнді таңдау
+            </button>
+          </div>
+        )}
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: 'Барлығы', value: totalLessons, icon: BookOpen, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+            { label: 'Аяқталды', value: completedLessonsCount, icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+            { label: 'Прогресс', value: `${progressPercent}%`, icon: BarChart3, color: 'text-indigo-500', bg: 'bg-indigo-50 dark:bg-indigo-900/20' },
+            { label: 'Балл', value: user.points, icon: Coins, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+          ].map((stat, i) => (
+            <div key={i} className="bg-white dark:bg-slate-800 p-4 rounded-[24px] border border-slate-100 dark:border-slate-700 shadow-sm flex items-center gap-3">
+              <div className={`w-10 h-10 ${stat.bg} ${stat.color} rounded-xl flex items-center justify-center`}>
+                <stat.icon size={20} />
+              </div>
+              <div>
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
+                <p className="text-base font-black font-outfit">{stat.value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Overall Progress Bar */}
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-[28px] border border-slate-100 dark:border-slate-700 shadow-sm space-y-4">
+          <div className="flex justify-between items-center">
+            <h4 className="text-[10px] font-black font-outfit text-slate-800 dark:text-white uppercase tracking-widest">Курс прогресі</h4>
+            <span className="text-xs font-black text-indigo-600">{progressPercent}%</span>
+          </div>
+          <div className="h-2 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
+            <div className="h-full bg-indigo-600 transition-all duration-1000" style={{ width: `${progressPercent}%` }}></div>
+          </div>
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+            {completedLessonsCount} / {totalLessons} сабақ аяқталды • {modules.length} тарау
+          </p>
+        </div>
       </header>
 
-      <div className="space-y-4">
-        {safeModules.map((module: any, idx: number) => {
-          const lessons = module.lessons as any[];
-          const isExpanded = expandedModule === module.id;
+      <div className="space-y-6">
+        <div className="flex justify-between items-center px-2">
+          <h3 className="text-lg font-black font-outfit text-slate-800 dark:text-white">Бағдарлама бөлімдері</h3>
+          <span className="text-[9px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full uppercase tracking-widest">{modules.length} тарау</span>
+        </div>
 
-          // ✅ safety: lessons бос болса — done=false
-          const isDone =
-            lessons.length > 0 &&
-            lessons.every((l: any) => completedLessons.includes(l.id));
+        <div className="space-y-4">
+          {modules.map((module, idx) => {
+            const isExpanded = expandedModule === module.id;
+            const completedInModule = module.lessons.filter(l => user.completedLessons.includes(l.id)).length;
+            const moduleProgress = module.lessons.length > 0 ? Math.round((completedInModule / module.lessons.length) * 100) : 0;
 
-          return (
-            <div key={module.id ?? idx} className="space-y-2">
-              <button
-                onClick={() => toggleModule(module.id)}
-                className={`w-full p-6 rounded-[30px] border transition-all flex items-center justify-between text-left ${
-                  isExpanded
-                    ? "bg-slate-900 text-white border-slate-900 shadow-xl scale-[1.02]"
-                    : "bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700 text-gray-800 dark:text-slate-100"
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs ${
-                      isDone
-                        ? "bg-emerald-500 text-white"
-                        : isExpanded
-                        ? "bg-white/20"
-                        : "bg-gray-100 dark:bg-slate-900 text-gray-400"
-                    }`}
-                  >
-                    {isDone ? <i className="fas fa-check"></i> : idx + 1}
+            return (
+              <div key={module.id} className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden transition-all">
+                <button
+                  onClick={() => toggleModule(module.id)}
+                  className="w-full p-6 flex items-center justify-between text-left group"
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                      isExpanded ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-900 text-slate-400'
+                    }`}>
+                      {idx + 1}-бөлім
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-black text-sm font-outfit text-slate-800 dark:text-white leading-tight group-hover:text-indigo-600 transition-colors">
+                        {module.title}
+                      </h4>
+                      <div className="flex items-center gap-4 mt-2">
+                        <div className="flex-1 max-w-[120px] h-1 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
+                          <div className="h-full bg-emerald-500" style={{ width: `${moduleProgress}%` }}></div>
+                        </div>
+                        <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">
+                          {moduleProgress}% <span className="text-slate-300 dark:text-slate-600 ml-1">{completedInModule} / {module.lessons.length}</span>
+                        </span>
+                      </div>
+                    </div>
                   </div>
+                  <ChevronDown size={18} className={`text-slate-300 transition-transform duration-300 ml-4 ${isExpanded ? 'rotate-180' : ''}`} />
+                </button>
 
-                  <div>
-                    <h4 className="font-black text-sm font-outfit leading-tight">
-                      {module.title ?? `Модуль ${idx + 1}`}
-                    </h4>
-                    <span className="text-[9px] font-black uppercase tracking-widest opacity-60">
-                      {lessons.length} сабақ
-                    </span>
-                  </div>
-                </div>
-
-                <i
-                  className={`fas fa-chevron-down transition-transform duration-300 ${
-                    isExpanded ? "rotate-180" : ""
-                  }`}
-                ></i>
-              </button>
-
-              {isExpanded && (
-                <div className="bg-gray-50 dark:bg-slate-900/50 rounded-[30px] border border-gray-100 dark:border-slate-800 p-2 space-y-1 animate-in slide-in-from-top duration-300">
-                  {lessons.length === 0 ? (
-                    <p className="p-6 text-center text-xs font-black text-gray-400 uppercase">
-                      Сабақтар әлі қосылмаған
-                    </p>
-                  ) : (
-                    lessons.map((lesson: any, lIdx: number) => {
-                      const lDone = completedLessons.includes(lesson.id);
-
-                      return (
-                        <button
-                          key={lesson.id ?? lIdx}
-                          onClick={() => onSelectLesson(lesson)}
-                          className="w-full p-4 flex items-center gap-4 hover:bg-white dark:hover:bg-slate-800 rounded-2xl transition-all text-left group"
-                        >
-                          <div
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${
-                              lDone ? "text-emerald-500" : "text-gray-400"
+                {isExpanded && (
+                  <div className="px-4 pb-6 space-y-2 animate-in slide-in-from-top duration-300">
+                    {module.lessons.length === 0 ? (
+                      <p className="p-4 text-center text-[9px] font-black text-slate-400 uppercase">Сабақтар әлі қосылмаған</p>
+                    ) : (
+                      module.lessons.map((lesson) => {
+                        const lDone = user.completedLessons.includes(lesson.id);
+                        return (
+                          <button
+                            key={lesson.id}
+                            onClick={() => {
+                              if (!isSubjectChosen && !lesson.isFree) {
+                                alert('Бұл сабақты көру үшін пәнді таңдауыңыз қажет немесе Premium жазылым алыңыз.');
+                                return;
+                              }
+                              onSelectLesson(lesson);
+                            }}
+                            className={`w-full p-4 bg-slate-50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-900 rounded-2xl border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/30 transition-all flex items-center gap-4 group relative ${
+                              !isSubjectChosen && !lesson.isFree ? 'opacity-60 grayscale-[0.5]' : ''
                             }`}
                           >
-                            {lIdx + 1}.
-                          </div>
-
-                          <div className="flex-1">
-                            <h5 className="font-bold text-gray-700 dark:text-slate-300 text-sm group-hover:text-emerald-500">
-                              {lesson.title ?? `Сабақ ${lIdx + 1}`}
-                            </h5>
-                            <span className="text-[8px] font-black uppercase text-gray-400">
-                              {lesson.isFree ? "Тегін" : "Premium"}
-                            </span>
-                          </div>
-
-                          <i className="fas fa-play-circle text-gray-200 dark:text-slate-700 group-hover:text-emerald-500 text-lg transition-colors"></i>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all ${
+                              lDone ? 'bg-emerald-100 text-emerald-600' : 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm group-hover:scale-110'
+                            }`}>
+                              {lDone ? <CheckCircle size={18} /> : <Play size={16} className="fill-current" />}
+                            </div>
+                            <div className="flex-1 text-left">
+                              <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs leading-tight mb-1">{lesson.title}</h5>
+                              <div className="flex items-center gap-3">
+                                <span className="text-[8px] font-medium text-slate-400 flex items-center gap-1">
+                                  <Clock size={10} /> 45 мин
+                                </span>
+                                <span className="text-[8px] font-black text-amber-500 flex items-center gap-1">
+                                  <Coins size={10} /> 10 балл
+                                </span>
+                              </div>
+                            </div>
+                            {!lesson.isFree && !lDone && (
+                              <div className="text-slate-400">
+                                <Lock size={14} />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

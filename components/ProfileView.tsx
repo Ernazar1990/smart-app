@@ -1,5 +1,5 @@
+
 import React, { useState } from 'react';
-import { supabase } from "../supabaseClient";
 import { UserProgress } from '../types';
 import SkillRadar from './SkillRadar';
 
@@ -9,7 +9,7 @@ interface ProfileViewProps {
   onSelectView?: (view: any) => void;
 }
 
-function ProfileView({ user, onLogout, onSelectView }: ProfileViewProps) {
+const ProfileView: React.FC<ProfileViewProps> = ({ user, onLogout, onSelectView }) => {
   const [showHistory, setShowHistory] = useState(false);
 
   // Mock data for the radar chart
@@ -39,28 +39,12 @@ function ProfileView({ user, onLogout, onSelectView }: ProfileViewProps) {
     return date.toLocaleDateString('kk-KZ', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   };
 
-  // ✅ Supabase logout (толық дұрыс)
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (e) {
-      // signOut қате берсе де, локальды тазалап шығарамыз
-      console.error('Supabase signOut error', e);
-    }
-
-    localStorage.removeItem('smart_user_session');
-    localStorage.removeItem('smart_user_pin'); // қаласаңыз қалдыра аласыз
-    // localStorage.removeItem('smart_user_name'); // керек болса ашыңыз
-    // localStorage.removeItem('smart_last_email'); // керек болса ашыңыз
-
-    onLogout();
-  };
-
   return (
     <div className="space-y-6 pb-24 animate-in fade-in duration-500">
+      
       {/* Admin Quick Access - Тек админ үшін */}
       {user.isAdmin && (
-        <button
+        <button 
           onClick={() => onSelectView?.('admin')}
           className="w-full bg-slate-900 dark:bg-slate-800 p-6 rounded-[40px] border border-slate-700 shadow-xl flex items-center justify-between group transition-all active:scale-95"
         >
@@ -80,7 +64,7 @@ function ProfileView({ user, onLogout, onSelectView }: ProfileViewProps) {
       )}
 
       {/* 1. Ranking Card */}
-      <button
+      <button 
         onClick={() => onSelectView?.('rating')}
         className="w-full bg-gradient-to-br from-indigo-600 to-indigo-800 p-6 rounded-[40px] text-white shadow-xl flex items-center justify-between relative overflow-hidden group"
       >
@@ -89,9 +73,7 @@ function ProfileView({ user, onLogout, onSelectView }: ProfileViewProps) {
         </div>
         <div className="relative z-10 space-y-3 text-left">
           <div className="flex items-center gap-2">
-            <span className="bg-white/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/20 font-outfit">
-              Рейтингтегі орныңыз
-            </span>
+            <span className="bg-white/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/20 font-outfit">Рейтингтегі орныңыз</span>
           </div>
           <div className="flex items-end gap-3">
             <h4 className="text-5xl font-black font-outfit leading-none">#14</h4>
@@ -111,29 +93,22 @@ function ProfileView({ user, onLogout, onSelectView }: ProfileViewProps) {
 
       {/* 2. Knowledge Radar */}
       <div className="bg-white dark:bg-slate-800 p-8 rounded-[40px] border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
-        <h4 className="text-xs font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-4 font-outfit text-left">
-          Білім картасы
-        </h4>
+        <h4 className="text-xs font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-4 font-outfit text-left">Білім картасы</h4>
         <SkillRadar data={radarData} />
         <div className="mt-4 p-4 bg-gray-50 dark:bg-slate-900/50 rounded-2xl">
-          <p className="text-[10px] text-gray-500 leading-relaxed text-center font-medium font-outfit">
-            <i className="fas fa-magic text-emerald-500 mr-1"></i>
-            AI талдау: Сенің <b>Теория</b> жағың өте мықты, бірақ <b>Есептерге</b> көбірек көңіл бөлу керек.
-          </p>
+           <p className="text-[10px] text-gray-500 leading-relaxed text-center font-medium font-outfit">
+             <i className="fas fa-magic text-emerald-500 mr-1"></i>
+             AI талдау: Сенің <b>Теория</b> жағың өте мықты, бірақ <b>Есептерге</b> көбірек көңіл бөлу керек.
+           </p>
         </div>
       </div>
 
       {/* 3. Achievements */}
       <div className="bg-white dark:bg-slate-800 p-6 rounded-[40px] border border-gray-100 dark:border-slate-700 shadow-sm">
-        <h4 className="text-xs font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-4 px-2 font-outfit text-left">
-          Жетістіктерім
-        </h4>
+        <h4 className="text-xs font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-4 px-2 font-outfit text-left">Жетістіктерім</h4>
         <div className="grid grid-cols-3 gap-3">
           {achievements.map((ach) => (
-            <div
-              key={ach.id}
-              className={`${ach.bg} dark:bg-slate-900/50 p-4 rounded-[25px] flex flex-col items-center gap-2 border border-white dark:border-slate-700`}
-            >
+            <div key={ach.id} className={`${ach.bg} dark:bg-slate-900/50 p-4 rounded-[25px] flex flex-col items-center gap-2 border border-white dark:border-slate-700`}>
               <i className={`fas ${ach.icon} ${ach.color} text-xl`}></i>
               <span className="text-[8px] font-black text-gray-500 uppercase text-center font-outfit">{ach.label}</span>
             </div>
@@ -148,7 +123,7 @@ function ProfileView({ user, onLogout, onSelectView }: ProfileViewProps) {
         </div>
         <h3 className="text-2xl font-black text-gray-900 dark:text-white font-outfit">{user.name}</h3>
         <p className="text-gray-400 dark:text-slate-500 text-sm mt-1 mb-6 font-outfit">{user.email || 'Пошта көрсетілмеген'}</p>
-
+        
         <div className="grid grid-cols-3 gap-2">
           {stats.map((stat, i) => (
             <div key={i} className="bg-gray-50 dark:bg-slate-900 p-3 rounded-2xl text-center">
@@ -161,8 +136,8 @@ function ProfileView({ user, onLogout, onSelectView }: ProfileViewProps) {
       </div>
 
       {/* Logout */}
-      <button
-        onClick={handleLogout}
+      <button 
+        onClick={onLogout}
         className="w-full py-5 text-red-500 font-black bg-white dark:bg-slate-800 rounded-3xl border border-red-50 dark:border-red-900/30 shadow-sm hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors flex items-center justify-center gap-3 font-outfit"
       >
         <i className="fas fa-sign-out-alt"></i>
@@ -170,6 +145,6 @@ function ProfileView({ user, onLogout, onSelectView }: ProfileViewProps) {
       </button>
     </div>
   );
-}
+};
 
 export default ProfileView;

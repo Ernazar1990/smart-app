@@ -1,277 +1,153 @@
-// src/types.ts
 
-export type AppView =
-  | "home"
-  | "module-list"
-  | "lesson-detail"
-  | "ai-tools-hub"
-  | "ai-tutor"
-  | "profile"
-  | "uni-list"
-  | "rating"
-  | "marathon"
-  | "subject-selection"
-  | "periodic-table"
-  | "scanner"
-  | "formulas"
-  | "solubility-table"
-  | "reactivity-series"
-  | "multiplication-table"
-  | "glossary"
-  | "reaction-balancer"
-  | "flashcards"
-  | "arena"
-  | "career-advisor"
-  | "roadmap"
-  | "tournament"
-  | "test"
-  // admin
-  | "admin"
-  | "admin-content"
-  | "admin-posts"
-  | "admin-universities"
-  | "admin-aihub"
-  | "admin-staff"
-  | "admin-users";
+export type AppView = 'auth' | 'home' | 'subjects' | 'module-list' | 'lesson-detail' | 'test' | 'marathon' | 'rating' | 'profile' | 'subscription' | 'periodic-table' | 'ai-tutor' | 'news-detail' | 'uni-list' | 'onboarding' | 'scanner' | 'formulas' | 'admin' | 'admin-content' | 'admin-news' | 'admin-users' | 'admin-staff' | 'admin-home' | 'admin-unis' | 'admin-ai' | 'subject-selection' | 'solubility-table' | 'reactivity-series' | 'multiplication-table' | 'glossary' | 'ai-tools-hub' | 'reaction-balancer' | 'flashcards' | 'arena' | 'ai-study-plan' | 'career-advisor' | 'roadmap' | 'tournament';
 
-// ---------------- SUBJECTS ----------------
-export type Subject = {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  isElective?: boolean;
-};
+export type UserRole = 'student' | 'teacher' | 'super-admin';
 
-// ---------------- LESSONS / MODULES ----------------
+// Missing type: UserMarathon
+export interface UserMarathon {
+  isActive: boolean;
+  duration: 7 | 14 | 30;
+  startDate: string;
+  completedDays: number[];
+  currentStreak: number;
+}
 
-export type HomeworkItem = {
-  id: string;
-  // кей жерде text, кей жерде question қолданылған — екеуі де рұқсат
-  text?: string;
-  question?: string;
-  options: string[];
-  correctAnswer: number;
-};
-
-export type ReinforcementQuestion = {
-  id: string;
-  question: string;
-  options: string[];
-
-  // Екеуін де қолдаймыз (ескі/жаңа кодпен үйлесу үшін)
-  correctAnswer: number;   // 0..n-1
-  answerIndex?: number;    // 0..n-1
-
-  explanation?: string;
-};
-
-export interface Lesson {
-  id: string;
-  title: string;
-  content: string;
-
-  // ✅ қос
-  reinforcement?: {
-    enabled?: boolean;
-    questions?: ReinforcementQuestion[];
-    passScore?: number; // 0..100
-  };
-
-  // 1) Негізгі видео
-  videoUrl?: string;
-
-  // constants.ts ішінде transcript қолданылып тұр
-  transcript?: string;
-
-  // 2) Бекіту тапсырмасы
-  practiceHtml?: string;
-
-  // reinforcement кей жерде жоқ болуы мүмкін
-  reinforcementItems?: ReinforcementQuestion[]; // ✅ көп бекіту сұрақтары
-
-  // 3) Үй жұмысы
-  homeworkHtml?: string;
-  homeworkPdfUrl?: string;
-
-  // Үй жұмысы тесттері
-  homework: HomeworkItem[];
-
-  // 4) Қатемен жұмыс
-  fixesVideoUrl?: string;
-  fixesPdfUrl?: string;
-};
-
-export type Module = {
-  id: string;
-  title: string;
-  weekNumber?: number;
-   lessons: Lesson[];
-};
-// ---------------- STAFF / USER ----------------
-export type StaffMember = {
-  email: string;
-  name: string;
-  role: "super-admin" | "teacher" | "admin" | string;
-  permissions: string[];
-};
-
-export type UserMarathon = {
-  // екі вариант жүр: startDate және startAt, isActive және active
-  startDate?: string;
-  startAt?: string;
-
-  isActive?: boolean;
-  active?: boolean;
-
-  duration?: number;
-
-  completedDays?: number[];
-  currentStreak?: number;
-};
-
-export type UserProgress = {
+export interface UserProgress {
   name: string;
   email: string;
   phone?: string;
   class?: string;
   region?: string;
   school?: string;
-  pin?: string;
-
+  pin?: string; 
   points: number;
-  xp: number;
-  level: number;
-  streak: number;
-  estimatedScore: number;
-
+  xp?: number; 
+  level?: number;
+  streak?: number;
+  estimatedScore?: number;
   completedLessons: string[];
-  totalLessons: number;
-
-  recentScores: number[];
-  categoryStrength: Record<string, number>;
-  totalSolved: number;
-  correctAnswers: number;
-
-  subscription?: "none" | "basic" | "pro" | string;
-
+  totalLessons?: number;
+  recentScores?: number[];
+  categoryStrength?: { [key: string]: number };
+  totalSolved?: number;
+  correctAnswers?: number;
+  subscription: string;
   chosenElectives: string[];
   startDate?: string;
-
   isAdmin?: boolean;
-  role?: string;
-  permissions?: string[];
-
+  role?: UserRole;
+  permissions?: string[]; // Subject IDs like ['chem', 'bio']
   pointsHistory?: any[];
-
+  // Added marathon field to UserProgress
   marathon?: UserMarathon;
-};
+}
 
-// ---------------- CHAT ----------------
-export type ChatMessage = {
-  // стандарт: model жоқ, assistant қолдану керек
-  role: "user" | "assistant" | "system";
+export interface StaffMember {
+  email: string;
+  name: string;
+  role: UserRole;
+  permissions: string[];
+}
+
+export interface Lesson {
+  id: string;
+  title: string;
+  isFree: boolean;
+  videoUrl: string;
+  presentationUrl: string;
+  analysisVideoUrl: string;
+  pdfSolutionUrl: string;
+  // Added transcript field to Lesson
+  transcript?: string;
+  reinforcement: {
+    question: string;
+    options: string[];
+    correctAnswer: number;
+  }[];
+  homework: {
+    question: string;
+    options: string[];
+    correctAnswer: number;
+  }[];
+}
+
+export interface Module {
+  id: string;
+  title: string;
+  lessons: Lesson[];
+  weekNumber: number;
+}
+
+export interface Subject {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  isElective: boolean;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'model';
   content: string;
-};
+}
 
-// ---------------- TESTS ----------------
-export type Question = {
+// Missing type: Question
+export interface Question {
   id: string;
   text: string;
   options: string[];
-
-  // бір жауап: number, көп жауап: number[]
   correctAnswer: number | number[];
-
-  // TestView.tsx осыны тексереді
   isMulti?: boolean;
-};
+  subject?: string;
+}
 
-// ---------------- NEWS ----------------
-export type NewsItem = {
+// Missing type: InternationalGrant
+export interface InternationalGrant {
   id: string;
+  country: string;
   title: string;
-  excerpt?: string;
-  content?: string;
-  createdAt?: string;
-};
+  totalGrants: string;
+  programs: string;
+  language: string;
+  deadline: string;
+  topUnis: string[];
+  image: string;
+  color: string;
+}
 
-// ---------------- UNI HUB ----------------
-export type UniversityContacts = {
-  website?: string;
-  phone?: string;
-  email?: string;
-
-  admissionsUrl?: string;
-  admissionsPhone?: string;
-  admissionsEmail?: string;
-};
-
-export type UniversityAdmission = {
-  documentsKZ?: string[];
-  documentsIntl?: string[];
-  notes?: string[];
-};
-
-export type UniversityOpportunities = {
-  dormitory?: boolean;
-  exchange?: boolean;
-  doubleDegree?: boolean;
-  militaryDept?: boolean;
-  foundation?: boolean;
-  scholarships?: string[];
-};
-
-export type University = {
+// Missing type: University
+export interface University {
   id: string;
   name: string;
+  logo: string;
+  location: string;
+  region: string;
+  type: string;
+  specialtiesCount: number;
+  minScore: number;
+  averagePrice: string;
+  hasDormitory: boolean;
+  website: string;
+  address: string;
+  phone: string;
+}
 
-  // UniListView қолданатын негізгі өрістер:
-  logo?: string | null;
-  location?: string | null;
-  region?: string | null;
-  type?: string | null;
-
-  specialtiesCount?: number | null;
-  minScore?: number | null;
-  averagePrice?: string | null;
-
-  hasDormitory?: boolean | null;
-  website?: string | null;
-  address?: string | null;
-  phone?: string | null;
-
-  // UniListView ішінде қолданылып тұр:
-  contacts?: UniversityContacts | null;
-  admission?: UniversityAdmission | null;
-  opportunities?: UniversityOpportunities | null;
-};
-
-export type Specialty = {
+// Missing type: Specialty
+export interface Specialty {
   id: string;
-  code?: string;
+  code: string;
   name: string;
   subjects: string[];
-  minScore?: number;
-  grants?: number;
-};
+  minScore: number;
+  grants: number;
+}
 
-export type InternationalGrant = {
+// Missing type: NewsItem
+export interface NewsItem {
   id: string;
-
-  country?: string;
-  title?: string;
-
-  totalGrants?: string;
-  programs?: string;
-  language?: string;
-  deadline?: string;
-
-  topUnis?: string[];
-
+  title: string;
+  content: string;
+  date: string;
   image?: string;
-  color?: string;
-
-  // сенде UniListView кей жерде description көрсетеді
-  description?: string;
-};
+  created_at?: string;
+}

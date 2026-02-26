@@ -1,124 +1,238 @@
-import React from 'react';
-import type { SubjectId } from '../constants';   
-import { UserProgress, Subject } from '../types';
+
+import React, { useState, useEffect } from 'react';
+import { UserProgress, Subject, NewsItem } from '../types';
+import { supabase } from '../supabaseClient';
 
 interface HomeViewProps {
   user: UserProgress;
   subjects: Subject[];
   onSelectView: (view: any) => void;
-  onSelectSubject: (subjectId: SubjectId) => void;  
+  onSelectSubject: (subjectId: string) => void;
 }
 
 const HomeView: React.FC<HomeViewProps> = ({ user, subjects, onSelectView, onSelectSubject }) => {
-  const getRoleGreeting = () => {
-    const firstName = user.name.split(' ')[0];
-    switch (user.role) {
-      case 'super-admin':
-        return `Админ ${firstName}`;
-      case 'teacher':
-        return `Куратор ${firstName}`;
-      default:
-        return `Оқушы ${firstName}`;
-    }
-  };
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [isLoadingNews, setIsLoadingNews] = useState(false);
+  const [homeConfig, setHomeConfig] = useState({
+    greetingTitle: 'Сәлем, Оқушы! 👋',
+    premiumTitle: 'Барлық сабақтарға қолжетімділік алыңыз! 🚀',
+    premiumDesc: '177 сабақ • 12 пән • Шексіз тест • Балл жүйесі',
+    bannerColor: 'bg-indigo-600',
+    premiumColor: 'from-amber-500 to-orange-600'
+  });
+
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+
+  useEffect(() => {
+    const fetchHomeData = async () => {
+      setIsLoadingNews(true);
+      try {
+        // Fetch news
+        const { data: newsData, error: newsError } = await supabase.from('news').select('*').order('created_at', { ascending: false }).limit(3);
+        if (!newsError && newsData && newsData.length > 0) {
+          setNews(newsData);
+        } else {
+          // Fallback sample news if DB is empty
+          setNews([
+            { 
+              id: 'sample-1', 
+              title: 'ҰБТ-2026: Жаңа өзгерістер мен дайындық жоспары', 
+              content: 'Биылғы ҰБТ-дағы басты жаңалықтар мен пәндер бойынша дайындық кеңестерін оқыңыз.', 
+              date: new Date().toLocaleDateString('kk-KZ'),
+              image: 'https://picsum.photos/seed/news1/800/400'
+            }
+          ]);
+        }
+
+        // Fetch home config
+        const { data: configData, error: configError } = await supabase.from('home_config').select('*').eq('id', 'main').maybeSingle();
+        if (!configError && configData) setHomeConfig(configData.config);
+      } catch (err) {
+        console.warn("Home data fetch failed");
+      } finally {
+        setIsLoadingNews(false);
+      }
+    };
+    fetchHomeData();
+  }, []);
 
   return (
-    <div className="space-y-6 pb-32 animate-in fade-in duration-700">
+    <div className="max-w-5xl mx-auto space-y-8 pb-20 animate-in fade-in duration-700">
       
-      {/* 1. Header with Level & XP */}
-      <section className="flex justify-between items-center px-2">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-indigo-600 rounded-[20px] flex items-center justify-center text-white font-black text-xl shadow-lg border-2 border-white dark:border-slate-800">
-            {user.level}
-          </div>
-          <div className="space-y-1">
-            <h1 className="text-xl font-black text-gray-900 dark:text-white font-outfit tracking-tight leading-none">
-              Сәлем, {getRoleGreeting()}! 👋
-            </h1>
-            <div className="flex items-center gap-2">
-               <div className="w-24 h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                 <div className="h-full bg-emerald-500" style={{ width: '65%' }}></div>
-               </div>
-               <span className="text-[9px] font-black text-gray-400 uppercase">lvl up: 65%</span>
+      {/* Premium Info Modal */}
+      {showPremiumModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-[40px] p-8 shadow-2xl animate-in zoom-in duration-300 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-400"></div>
+            
+            <button 
+              onClick={() => setShowPremiumModal(false)}
+              className="absolute top-6 right-6 w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-all"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+
+            <div className="text-center space-y-6">
+              <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-3xl flex items-center justify-center text-amber-600 text-4xl mx-auto shadow-xl shadow-amber-100 dark:shadow-none">
+                <i className="fas fa-crown"></i>
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="text-2xl font-black font-outfit text-slate-800 dark:text-white">Premium Мүмкіндіктері</h3>
+                <p className="text-slate-400 text-sm font-medium">Оқуыңызды жаңа деңгейге көтеріңіз</p>
+              </div>
+
+              <div className="space-y-3 text-left">
+                {[
+                  { icon: 'fa-check-circle', text: 'Барлық 177 сабаққа шексіз кіру' },
+                  { icon: 'fa-check-circle', text: 'Күрделі тақырыптарға AI көмегі' },
+                  { icon: 'fa-check-circle', text: 'Шексіз тесттер мен марафондар' },
+                  { icon: 'fa-check-circle', text: 'Жеке дайындық жоспары' }
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border border-gray-100 dark:border-slate-700">
+                    <i className={`fas ${item.icon} text-emerald-500`}></i>
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{item.text}</span>
+                  </div>
+                ))}
+              </div>
+
+              <button 
+                onClick={() => {
+                  setShowPremiumModal(false);
+                  onSelectView('subscription');
+                }}
+                className="w-full py-4 bg-slate-900 dark:bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:scale-[1.02] transition-all active:scale-95"
+              >
+                Тарифтерді көру
+              </button>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => onSelectView('roadmap')} className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-full flex items-center justify-center shadow-sm">
-            <i className="fas fa-map-marked-alt"></i>
-          </button>
-          <div className="bg-amber-50 dark:bg-amber-900/20 px-4 py-2 rounded-2xl border border-amber-100 dark:border-amber-800/50">
-            <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">{user.points} <i className="fas fa-star text-[8px] ml-0.5"></i></span>
+      )}
+
+      {/* 1. Greeting Card */}
+      <section className={`${homeConfig.bannerColor} rounded-[32px] p-6 md:p-10 text-white relative overflow-hidden shadow-xl shadow-indigo-100 dark:shadow-none`}>
+        <div className="relative z-10 flex justify-between items-center">
+          <div className="space-y-1">
+            <h1 className="text-2xl md:text-4xl font-black font-outfit tracking-tight leading-tight">{homeConfig.greetingTitle}</h1>
+            <p className="text-indigo-100 font-bold text-xs md:text-sm opacity-80 uppercase tracking-widest">{user.email}</p>
+          </div>
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-[24px] p-3 md:p-4 text-center min-w-[90px] md:min-w-[120px]">
+             <div className="text-xl md:text-3xl font-black font-outfit mb-0.5 flex items-center justify-center gap-2">
+               <i className="fas fa-medal text-amber-400 text-lg md:text-xl"></i>
+               {user.points}
+             </div>
+             <p className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] opacity-60">Ұпай саны</p>
+          </div>
+        </div>
+        {/* Decorative elements */}
+        <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute -left-10 -top-10 w-32 h-32 bg-indigo-400/20 rounded-full blur-2xl"></div>
+      </section>
+
+      {/* 2. Premium Banner */}
+      <section className={`bg-gradient-to-br ${homeConfig.premiumColor} rounded-[32px] p-6 md:p-8 text-white relative overflow-hidden shadow-lg shadow-orange-100 dark:shadow-none group`}>
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="space-y-3 text-center md:text-left">
+            <div className="inline-flex bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.2em]">PREMIUM</div>
+            <h2 className="text-xl md:text-2xl font-black font-outfit leading-tight">{homeConfig.premiumTitle}</h2>
+            <p className="text-orange-50 font-medium text-[11px] md:text-xs opacity-90 max-w-md">{homeConfig.premiumDesc}</p>
+            <button 
+              onClick={() => onSelectView('subscription')}
+              className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all shadow-xl active:scale-95 mt-2"
+            >
+              <i className="fas fa-crown text-amber-400"></i>
+              Қосылу
+            </button>
+          </div>
+          <div className="relative hidden md:block">
+             <i className="fas fa-graduation-cap text-7xl md:text-9xl opacity-20 rotate-12 group-hover:rotate-0 transition-transform duration-700"></i>
           </div>
         </div>
       </section>
 
-      {/* 2. Tournament Banner */}
-      <section 
-        onClick={() => onSelectView('tournament')}
-        className="bg-gradient-to-br from-amber-400 to-orange-600 rounded-[40px] p-6 text-white shadow-xl relative overflow-hidden cursor-pointer group"
-      >
-        <div className="absolute -right-4 -bottom-4 text-8xl text-white/20 rotate-12 group-hover:scale-110 transition-transform">
-          <i className="fas fa-trophy"></i>
+      {/* 3. News Section (Moved up) */}
+      <section className="space-y-4">
+        <div className="flex justify-between items-end px-2">
+          <h2 className="text-lg font-black font-outfit text-slate-800 dark:text-white uppercase tracking-tight">Жаңалықтар</h2>
         </div>
-        <div className="relative z-10 flex items-center gap-4">
-           <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-xl animate-pulse">
-             <i className="fas fa-bolt"></i>
-           </div>
-           <div>
-             <h3 className="font-black font-outfit text-lg">Live Турнир: Химия</h3>
-             <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Қазір қосыл, 1500+ оқушы жарысуда</p>
-           </div>
-        </div>
+        {news.length > 0 ? (
+          <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 px-2">
+            {news.map((item) => (
+              <div 
+                key={item.id} 
+                className="min-w-[260px] md:min-w-[300px] bg-white dark:bg-slate-800 rounded-[28px] border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col group cursor-pointer hover:border-indigo-500 transition-all"
+              >
+                {item.image ? (
+                  <img src={item.image} alt="" className="h-36 w-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                ) : (
+                  <div className="h-36 w-full bg-slate-50 dark:bg-slate-900/50 flex items-center justify-center">
+                    <i className="fas fa-newspaper text-3xl text-slate-200 dark:text-slate-700"></i>
+                  </div>
+                )}
+                <div className="p-5 space-y-2">
+                  <span className="text-[7px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-lg uppercase tracking-widest">{item.date}</span>
+                  <h3 className="font-black text-slate-800 dark:text-slate-100 text-xs font-outfit line-clamp-2 leading-tight">{item.title}</h3>
+                  <p className="text-[9px] text-slate-400 font-medium line-clamp-2 leading-relaxed">{item.content}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="px-2">
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-[28px] border border-dashed border-gray-200 dark:border-slate-700 text-center">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Әзірге жаңалықтар жоқ</p>
+            </div>
+          </div>
+        )}
       </section>
 
-      {/* 3. AI Smart Suggestion */}
-      <section 
-        onClick={() => onSelectView('module-list')}
-        className="bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-[40px] p-8 text-white shadow-xl relative overflow-hidden group cursor-pointer"
-      >
-        <i className="fas fa-magic absolute -right-6 -top-6 text-9xl opacity-10 rotate-12 group-hover:scale-110 transition-transform"></i>
-        <div className="relative z-10 space-y-4">
-          <div className="inline-flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-white/20">
-            <i className="fas fa-brain"></i> AI Ұсынысы
-          </div>
-          <h2 className="text-2xl font-black font-outfit leading-tight">Бүгінгі мақсат: <br/> "Зат мөлшері" тақырыбы</h2>
-          <p className="text-indigo-100 text-xs font-medium opacity-90 max-w-[200px]">Білім картасы бойынша осы тақырыптан әлі балл жинамапсыз.</p>
-          <button className="bg-white text-indigo-600 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg group-hover:translate-x-1 transition-transform">
-            САБАҚТЫ БАСТАУ
-          </button>
+      {/* 4. Subject Grid */}
+      <section className="space-y-6">
+        <div className="px-2">
+          <h2 className="text-lg font-black font-outfit text-slate-800 dark:text-white uppercase tracking-tight">Пәндер</h2>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          {subjects.map((sub) => {
+            const isChosen = !sub.isElective || user.chosenElectives.includes(sub.id);
+            return (
+              <button
+                key={sub.id}
+                onClick={() => onSelectSubject(sub.id)}
+                className={`bg-white dark:bg-slate-800 p-5 md:p-6 rounded-[28px] border dark:border-slate-700 shadow-sm flex flex-col items-center gap-4 hover:border-indigo-500 dark:hover:border-indigo-400 hover:shadow-md transition-all group relative overflow-hidden text-center ${
+                  isChosen ? 'border-emerald-500/20' : 'border-gray-50'
+                }`}
+              >
+                <div className={`w-14 h-14 md:w-16 md:h-16 bg-slate-50 dark:bg-slate-900 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-500`}>
+                  <i className={`fas ${sub.icon} ${sub.color.replace('bg-', 'text-')}`}></i>
+                </div>
+                
+                <div className="space-y-1">
+                  <h3 className="font-black text-slate-800 dark:text-slate-100 text-xs md:text-sm font-outfit leading-tight">{sub.name}</h3>
+                  <div className="flex flex-col gap-1 items-center">
+                    {isChosen ? (
+                      <span className="text-[7px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-lg uppercase tracking-widest">
+                        Таңдалған
+                      </span>
+                    ) : (
+                      <span className="text-[7px] font-black text-slate-400 bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded-lg uppercase tracking-widest">
+                        Шолу
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {isChosen && (
+                  <div className="absolute top-3 right-3 text-emerald-500 text-[10px]">
+                    <i className="fas fa-check-circle"></i>
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       </section>
-
-      {/* 4. Progress Grid */}
-      <div className="grid grid-cols-2 gap-3 px-1">
-         <div className="bg-white dark:bg-slate-800 p-6 rounded-[35px] border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col gap-2">
-            <i className="fas fa-calendar-check text-blue-500 text-xl"></i>
-            <p className="text-2xl font-black text-gray-900 dark:text-white font-outfit">{user.streak}</p>
-            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Күндік Strike</p>
-         </div>
-         <div className="bg-white dark:bg-slate-800 p-6 rounded-[35px] border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col gap-2">
-            <i className="fas fa-chart-line text-emerald-500 text-xl"></i>
-            <p className="text-2xl font-black text-gray-900 dark:text-white font-outfit">85%</p>
-            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Меңгеру деңгейі</p>
-         </div>
-      </div>
-
-      {/* 5. Support Shortcut */}
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-[40px] border border-gray-100 dark:border-slate-700 mx-2 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 shadow-sm">
-            <i className="fas fa-headset"></i>
-          </div>
-          <div>
-            <h5 className="text-sm font-black text-gray-900 dark:text-white font-outfit">Көмек керек пе?</h5>
-            <p className="text-[10px] text-gray-400 font-bold uppercase">Куратормен байланысу</p>
-          </div>
-        </div>
-        <a href="https://wa.me/87771902796" target="_blank" className="w-10 h-10 bg-emerald-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-emerald-100 dark:shadow-none hover:scale-110 transition-transform">
-          <i className="fas fa-chevron-right text-xs"></i>
-        </a>
-      </div>
     </div>
   );
 };

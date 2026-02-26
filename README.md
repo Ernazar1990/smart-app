@@ -6,16 +6,15 @@
 
 This contains everything you need to run your app locally.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1ewkdeSoPMEvL-quJJCVqnWgqW_BTW5xA
+View your app in AI Studio: https://ai.studio/apps/6c07f201-364d-4ac3-b225-1448cddf9a0a
+
+## Run Locally
+
+**Prerequisites:**  Node.js
+
 
 1. Install dependencies:
    `npm install`
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
-# Smart-App 📚  
-Ұлттық бірыңғай тестке дайындалудың тиімді жолы  
-
-## 🔎 Жобаның мақсаты
-Smart-App – оқушыларға ҰБТ-ға дайындалуды жеңілдететін платформа.  
-...

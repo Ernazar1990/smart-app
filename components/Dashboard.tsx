@@ -4,12 +4,12 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { UserProgress } from '../types';
 
 const Dashboard: React.FC<{ progress: UserProgress }> = ({ progress }) => {
-  const chartData = progress.recentScores.map((score, i) => ({
+  const chartData = (progress.recentScores || []).map((score, i) => ({
     name: `Тест ${i + 1}`,
     score: score
   }));
 
-  const pieData = Object.entries(progress.categoryStrength).map(([name, value]) => ({
+  const pieData = Object.entries(progress.categoryStrength || {}).map(([name, value]) => ({
     name, value
   }));
 
@@ -29,7 +29,7 @@ const Dashboard: React.FC<{ progress: UserProgress }> = ({ progress }) => {
           </div>
           <div>
             <p className="text-sm text-gray-500">Жалпы шешілген</p>
-            <p className="text-2xl font-bold text-gray-800">{progress.totalSolved}</p>
+            <p className="text-2xl font-bold text-gray-800">{progress.totalSolved || 0}</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
@@ -38,7 +38,7 @@ const Dashboard: React.FC<{ progress: UserProgress }> = ({ progress }) => {
           </div>
           <div>
             <p className="text-sm text-gray-500">Дұрыс жауаптар</p>
-            <p className="text-2xl font-bold text-gray-800">{Math.round((progress.correctAnswers / (progress.totalSolved || 1)) * 100)}%</p>
+            <p className="text-2xl font-bold text-gray-800">{Math.round(((progress.correctAnswers || 0) / (progress.totalSolved || 1)) * 100)}%</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">

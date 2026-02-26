@@ -1,85 +1,151 @@
 
-import React from 'react';
-import { Module, UserProgress } from '../types';
+import React, { useState } from 'react';
+import { Module, UserProgress, Lesson, Subject } from '../types';
 
 interface RoadmapViewProps {
   onBack: () => void;
-  modules: Module[];
+  allModules: Record<string, Module[]>;
   user: UserProgress;
+  onSelectLesson: (lesson: Lesson) => void;
+  subjects: Subject[];
 }
 
-const RoadmapView: React.FC<RoadmapViewProps> = ({ onBack, modules, user }) => {
-  // Determine icon based on topic keyword
-  const getIcon = (title: string) => {
-    if (title.includes('Атом')) return 'fa-atom';
-    if (title.includes('Органика')) return 'fa-leaf';
-    if (title.includes('Металл')) return 'fa-hammer';
-    if (title.includes('Есеп')) return 'fa-calculator';
-    if (title.includes('Период')) return 'fa-table-cells';
-    return 'fa-flask';
-  };
+const RoadmapView: React.FC<RoadmapViewProps> = ({ onBack, allModules, user, onSelectLesson, subjects }) => {
+  const [selectedWeek, setSelectedWeek] = useState(1);
+  
+  // Get all relevant subjects (3 mandatory + 2 electives)
+  const mySubjects = subjects.filter(sub => 
+    !sub.isElective || user.chosenElectives.includes(sub.id)
+  );
+
+  const [activeSubjectId, setActiveSubjectId] = useState(mySubjects[0]?.id || 'chem');
+  
+  const modules = allModules[activeSubjectId] || [];
+  const currentModule = modules.find(m => m.weekNumber === selectedWeek) || modules[0];
 
   return (
-    <div className="space-y-8 pb-32 animate-in fade-in duration-500">
-      <header className="flex items-center gap-4 px-2">
-        <button onClick={onBack} className="w-10 h-10 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-sm border border-gray-100 dark:border-slate-700">
-          <i className="fas fa-arrow-left text-gray-400"></i>
-        </button>
-        <div>
-          <h2 className="text-2xl font-black text-gray-900 dark:text-white font-outfit">Химия: Даму жолы 🗺️</h2>
-          <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">Барлығы: {modules.length} модуль</p>
+    <div className="space-y-4 pb-20 animate-in fade-in duration-500">
+      {/* Upper Info Section */}
+      <header className="space-y-4">
+        <div className="bg-white dark:bg-slate-800 p-5 rounded-[30px] border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+           <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-500 text-white rounded-xl flex items-center justify-center text-lg shadow-lg shadow-amber-100">
+                <i className="fas fa-calendar-check"></i>
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-slate-800 dark:text-white font-outfit">Оқу жоспары</h2>
+                <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mt-0.5">Барлық пәндер бойынша апталық кесте</p>
+              </div>
+           </div>
+           
+           {/* Subject Selector inside Roadmap */}
+           <div className="flex gap-2 overflow-x-auto no-scrollbar py-1 max-w-full">
+             {mySubjects.map(sub => (
+               <button
+                 key={sub.id}
+                 onClick={() => setActiveSubjectId(sub.id)}
+                 className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition-all border flex items-center gap-2 ${
+                   activeSubjectId === sub.id
+                   ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                   : 'bg-white dark:bg-slate-900 text-slate-400 border-gray-100 dark:border-slate-700'
+                 }`}
+               >
+                 <i className={`fas ${sub.icon} text-[10px]`}></i>
+                 {sub.name}
+               </button>
+             ))}
+           </div>
+        </div>
+
+        {/* Weeks Selection Tabs - Скриншот стилі */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 px-1">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setSelectedWeek(i + 1)}
+              className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
+                selectedWeek === (i + 1) 
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-lg' 
+                  : 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100'
+              }`}
+            >
+              Апта {i + 1} • {15 + i*7}.02
+            </button>
+          ))}
         </div>
       </header>
 
-      <div className="relative px-6">
-        {/* Main path line */}
-        <div className="absolute left-[51px] top-10 bottom-10 w-1.5 bg-gray-100 dark:bg-slate-800/50 -z-10 rounded-full"></div>
-
-        <div className="space-y-10">
-          {modules.map((mod, i) => {
-            const isCompleted = mod.lessons.every(l => user.completedLessons.includes(l.id));
-            const isActive = !isCompleted && (i === 0 || modules[i-1].lessons.every(l => user.completedLessons.includes(l.id)));
-            const isLocked = !isCompleted && !isActive;
-
-            return (
-              <div key={mod.id} className="flex items-center gap-6 group">
-                {/* Milestone Node */}
-                <div className={`w-14 h-14 rounded-[22px] flex items-center justify-center text-xl transition-all shadow-lg border-4 shrink-0 ${
-                  isCompleted ? 'bg-emerald-500 border-emerald-100 text-white shadow-emerald-100' :
-                  isActive ? 'bg-white dark:bg-slate-800 border-indigo-600 text-indigo-600 scale-110 shadow-indigo-100 ring-4 ring-indigo-50 dark:ring-indigo-900/20' :
-                  'bg-gray-50 dark:bg-slate-900 border-gray-100 dark:border-slate-800 text-gray-300'
-                }`}>
-                  <i className={`fas ${getIcon(mod.title)}`}></i>
-                </div>
-
-                {/* Info Card */}
-                <div className={`flex-1 p-5 rounded-[30px] border transition-all ${
-                  isActive ? 'bg-white dark:bg-slate-800 border-indigo-100 dark:border-slate-700 shadow-xl' :
-                  isCompleted ? 'bg-white/50 dark:bg-slate-900/50 border-emerald-50 dark:border-emerald-900/20' :
-                  'bg-white/30 dark:bg-slate-900/30 border-gray-50 dark:border-slate-800/50 opacity-60'
-                }`}>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className={`text-[9px] font-black uppercase tracking-widest ${isActive ? 'text-indigo-600' : 'text-gray-400'}`}>
-                      Модуль {i + 1}
-                    </span>
-                    {isCompleted && <i className="fas fa-check-circle text-emerald-500"></i>}
-                    {isLocked && <i className="fas fa-lock text-gray-200 text-[10px]"></i>}
-                  </div>
-                  <h4 className={`font-black font-outfit text-sm leading-tight ${isLocked ? 'text-gray-400' : 'text-gray-900 dark:text-white'}`}>
-                    {mod.title.split('. ')[1] || mod.title}
-                  </h4>
-                  {isActive && (
-                    <div className="mt-3 flex items-center gap-2">
-                       <div className="flex-1 h-1 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                          <div className="h-full bg-indigo-500" style={{ width: '0%' }}></div>
-                       </div>
-                       <span className="text-[8px] font-black text-indigo-600 uppercase">Бастау</span>
-                    </div>
-                  )}
-                </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Lessons List Area */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-[30px] border border-gray-100 dark:border-slate-700 shadow-sm space-y-4">
+            <div className="flex justify-between items-center border-b dark:border-slate-700 pb-3">
+              <div>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Модуль {selectedWeek}</p>
+                <h4 className="text-lg font-black text-slate-800 dark:text-white font-outfit line-clamp-1">{currentModule?.title.replace(/^\d+-тарау\.\s*/, '')}</h4>
               </div>
-            );
-          })}
+              <button onClick={() => setSelectedWeek(selectedWeek + 1)} className="bg-slate-50 dark:bg-slate-900 px-3 py-1.5 rounded-lg text-slate-400 text-[10px] font-bold hover:text-indigo-600 transition-colors">Келесі <i className="fas fa-chevron-right ml-1"></i></button>
+            </div>
+
+            <div className="space-y-2">
+              <h5 className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-2">Сабақтар</h5>
+              {currentModule?.lessons.length === 0 ? (
+                <p className="text-center py-6 text-slate-400 text-[10px] font-black uppercase">Сабақтар әлі қосылмаған</p>
+              ) : (
+                currentModule?.lessons.map((lesson) => (
+                  <div key={lesson.id} className="bg-gray-50 dark:bg-slate-900/50 p-4 rounded-[20px] flex items-center justify-between group hover:bg-white dark:hover:bg-slate-800 transition-all border border-transparent hover:border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-4 h-4 rounded border-2 ${user.completedLessons.includes(lesson.id) ? 'bg-emerald-500 border-emerald-500' : 'border-slate-200'}`}>
+                        {user.completedLessons.includes(lesson.id) && <i className="fas fa-check text-[8px] text-white flex items-center justify-center h-full"></i>}
+                      </div>
+                      <div>
+                        <h6 className="font-bold text-slate-800 dark:text-slate-200 text-xs">{lesson.title}</h6>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">40-60 минут</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => onSelectLesson(lesson)}
+                      className="bg-white dark:bg-slate-700 px-4 py-1.5 rounded-lg text-indigo-600 font-black text-[9px] uppercase tracking-widest shadow-sm hover:bg-indigo-600 hover:text-white transition-all"
+                    >
+                      Ашу
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Weekly Tasks Sidebar - Скриншот стилі */}
+        <div className="space-y-4">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-[30px] border border-gray-100 dark:border-slate-700 shadow-sm space-y-4">
+            <h5 className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-2">Апталық міндеттер</h5>
+            <div className="space-y-3">
+              {[
+                { title: 'Апталық тест', desc: 'Тестті орындау міндетті', icon: 'fa-vial' },
+                { title: 'Үй жұмысы', desc: 'Куратор тексереді', icon: 'fa-tasks' },
+                { title: 'Қатемен жұмыс', desc: 'Түзетсеңіз — прогресс артады', icon: 'fa-history' },
+              ].map((duty, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50 dark:bg-slate-900/30 opacity-70">
+                   <div className="w-4 h-4 rounded border-2 border-slate-200"></div>
+                   <div className="flex-1">
+                     <h6 className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">{duty.title}</h6>
+                     <p className="text-[8px] text-slate-400 font-medium">{duty.desc}</p>
+                   </div>
+                   <i className={`fas ${duty.icon} text-slate-300 text-[10px]`}></i>
+                </div>
+              ))}
+            </div>
+            
+            <div className="pt-3 border-t dark:border-slate-700">
+               <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl flex items-start gap-2">
+                  <i className="fas fa-lightbulb text-indigo-400 mt-0.5 text-xs"></i>
+                  <p className="text-[8px] font-bold text-indigo-900 dark:text-indigo-200 leading-relaxed">
+                    Ереже: Осы аптаның барлық тапсырмасын орындап, келесі аптаға жолдама ал.
+                  </p>
+               </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

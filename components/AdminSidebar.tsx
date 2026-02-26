@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { AppView } from '../types';
 
@@ -8,20 +9,15 @@ interface AdminSidebarProps {
 }
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setView, userRole }) => {
-  const adminMenuItems: { id: AppView; icon: string; label: string }[] = [
-    { id: 'admin', icon: 'fa-chart-pie', label: 'Басқару панелі' },
-
-    { id: 'admin-content', icon: 'fa-layer-group', label: 'Контент (Курстар)' },
-    { id: 'admin-posts', icon: 'fa-newspaper', label: 'Лента (мақалалар)' },
-    { id: 'admin-universities', icon: 'fa-building-columns', label: 'ЖОО менеджері' },
-    { id: 'admin-aihub', icon: 'fa-brain', label: 'AI Hub control' },
-
+  const adminMenuItems = [
+    { id: 'admin-home', icon: 'fa-home', label: 'Басты бет' },
+    { id: 'admin-content', icon: 'fa-book-open', label: 'Сабақтар' },
+    { id: 'admin-news', icon: 'fa-rss', label: 'Жаңалықтар' },
     { id: 'admin-users', icon: 'fa-users', label: 'Оқушылар' },
+    { id: 'admin-staff', icon: 'fa-user-tie', label: 'Қызметкерлер' },
+    { id: 'admin-unis', icon: 'fa-id-card', label: 'Мамандықтар' },
+    { id: 'admin-ai', icon: 'fa-robot', label: 'AI Hub' },
   ];
-
-  if (userRole === 'super-admin') {
-    adminMenuItems.push({ id: 'admin-staff', icon: 'fa-user-tie', label: 'Қызметкерлер' });
-  }
 
   return (
     <div className="w-72 bg-[#0F172A] border-r border-slate-800 h-screen fixed left-0 top-0 flex flex-col p-6 z-30 text-slate-300">
@@ -31,7 +27,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setView, userR
         </div>
         <div>
           <h1 className="text-xl font-black text-white tracking-tight font-outfit leading-none">SmartAdmin</h1>
-          <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] mt-1">Management System</p>
+          <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] mt-1">Басқару орталығы</p>
         </div>
       </div>
 
@@ -41,7 +37,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setView, userR
           return (
             <button
               key={item.id}
-              onClick={() => setView(item.id)}
+              onClick={() => setView(item.id as AppView)}
               className={`w-full flex items-center gap-4 px-5 py-4 rounded-[22px] transition-all group ${
                 isActive ? 'bg-indigo-600 text-white shadow-xl' : 'text-slate-400 hover:bg-slate-800'
               }`}
@@ -54,10 +50,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setView, userR
       </nav>
 
       <div className="mt-auto pt-6">
-        <button
-          onClick={() => setView('home')}
-          className="w-full flex items-center gap-4 px-5 py-4 rounded-[22px] bg-slate-800 text-slate-300 hover:bg-emerald-600 hover:text-white transition-all"
-        >
+        <button onClick={() => setView('home')} className="w-full flex items-center gap-4 px-5 py-4 rounded-[22px] bg-slate-800 text-slate-300 hover:bg-emerald-600 hover:text-white transition-all">
           <i className="fas fa-arrow-left text-sm"></i>
           <span className="text-sm font-bold">Оқу режимі</span>
         </button>

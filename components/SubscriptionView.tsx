@@ -6,24 +6,24 @@ const SubscriptionView: React.FC = () => {
     { 
       id: 'single', 
       name: '1 пән', 
-      price: '15 000 ₸', 
-      oldPrice: null,
+      price: '10 000 ₸', 
+      oldPrice: '15 000 ₸',
       desc: 'Таңдаған бір пәніңізге толық қолжетімділік.',
       color: 'border-gray-200'
     },
     { 
-      id: 'core', 
-      name: '3 негізгі пән', 
-      price: '30 000 ₸', 
-      oldPrice: '45 000 ₸',
-      desc: 'Мат. сауаттылық + Оқу сауаттылығы + Қазақстан тарихы.',
+      id: 'double', 
+      name: '2 пән', 
+      price: '15 000 ₸', 
+      oldPrice: '25 000 ₸',
+      desc: 'Екі таңдау пәніңізге толық қолжетімділік.',
       color: 'border-blue-500 bg-blue-50/30'
     },
     { 
       id: 'full', 
       name: '5 пән (Толық пакет)', 
-      price: '45 000 ₸', 
-      oldPrice: '75 000 ₸',
+      price: '40 000 ₸', 
+      oldPrice: '60 000 ₸',
       desc: 'Барлық 3 негізгі пән + 2 таңдау пәні. Ең тиімді таңдау!',
       color: 'border-emerald-500 bg-emerald-50 shadow-xl shadow-emerald-100/50',
       badge: 'Ең тиімді'

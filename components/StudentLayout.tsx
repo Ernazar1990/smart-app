@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import BottomNav from './BottomNav';
 import { AppView, UserProgress } from '../types';
 
@@ -10,65 +11,99 @@ interface StudentLayoutProps {
   user: UserProgress;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
+  hideNav?: boolean;
 }
 
-const StudentLayout: React.FC<StudentLayoutProps> = ({ children, currentView, setView, user, isDarkMode, toggleDarkMode }) => {
+const StudentLayout: React.FC<StudentLayoutProps> = ({ children, currentView, setView, user, isDarkMode, toggleDarkMode, hideNav }) => {
   return (
-    <div className="min-h-screen bg-[#FDFDFD] dark:bg-[#0F172A] flex flex-col transition-colors duration-300">
-      {/* Top Bar */}
-      <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white text-sm shadow-sm">
-            <i className="fas fa-flask"></i>
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] flex flex-col transition-colors duration-300">
+      {/* Top Bar - Скриншот стилінде */}
+      {!hideNav && (
+        <header className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 px-4 md:px-8 py-3 flex justify-between items-center shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-lg shadow-lg shadow-indigo-200 dark:shadow-none">
+              <i className="fas fa-book-open"></i>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-black text-slate-800 dark:text-white tracking-tight font-outfit leading-none text-base">
+                ҰБТ Академия
+              </span>
+              <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mt-0.5">Білімге жол</span>
+            </div>
           </div>
-          <span className="font-black text-gray-900 dark:text-white tracking-tighter font-outfit">
-            Smart<span className="text-emerald-600">App</span>
-          </span>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {/* Admin Switcher */}
-          {user.isAdmin && (
-            <button 
-              onClick={() => setView('admin')}
-              className="relative flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-2xl shadow-lg shadow-indigo-200 dark:shadow-none hover:scale-105 active:scale-95 transition-all animate-pulse"
-              title="Админ панелі"
-            >
-              <i className="fas fa-user-shield text-xs"></i>
-              <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Админ</span>
-            </button>
-          )}
+          
+          <div className="hidden lg:flex items-center gap-6">
+            {[
+              { id: 'home', label: 'Басты бет' },
+              { id: 'roadmap', label: 'Жоспар' },
+              { id: 'module-list', label: 'Курстар' },
+              { id: 'rating', label: 'Рейтинг' },
+              { id: 'uni-list', label: 'Дүкен' }
+            ].map((item) => (
+              <button 
+                key={item.id}
+                onClick={() => setView(item.id as AppView)}
+                className={`text-[10px] font-black uppercase tracking-widest transition-all relative py-1 ${
+                  currentView === item.id 
+                    ? 'text-indigo-600 dark:text-white' 
+                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                }`}
+              >
+                {item.label}
+                {currentView === item.id && (
+                  <motion.div layoutId="nav-underline" className="absolute -bottom-1 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
+                )}
+              </button>
+            ))}
+          </div>
 
-          {/* Theme Toggle */}
-          <button 
-            onClick={toggleDarkMode}
-            className="w-9 h-9 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-amber-400 rounded-full flex items-center justify-center text-sm transition-all hover:scale-110 active:scale-90 shadow-sm"
-          >
-            <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
-          </button>
-          
-          <button onClick={() => setView('ai-tutor')} className="w-9 h-9 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center text-xs transition-transform hover:scale-110">
-            <i className="fas fa-robot"></i>
-          </button>
-          
-          <div className="flex flex-col items-end ml-1">
-             <span className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase leading-none font-outfit">Балл</span>
-             <span className="text-sm font-black text-gray-900 dark:text-white leading-none font-outfit">{user.points}</span>
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-xl border border-amber-100 dark:border-amber-800/50 items-center gap-2">
+              <i className="fas fa-medal text-amber-500 text-[10px]"></i>
+              <span className="text-[10px] font-black text-amber-600 dark:text-amber-400">{user.points}</span>
+            </div>
+            
+            <button 
+              onClick={() => setView('profile')}
+              className="flex items-center gap-2 group"
+            >
+              <div className="w-9 h-9 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-indigo-600 transition-all border border-slate-100 dark:border-slate-700">
+                <i className="fas fa-user text-xs"></i>
+              </div>
+            </button>
+
+            {user.isAdmin && (
+              <button 
+                onClick={() => setView('admin-home')}
+                className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all"
+              >
+                Админ
+              </button>
+            )}
           </div>
-        </div>
-      </header>
+        </header>
+      )}
       
-      {/* Main Content Area */}
-      <main className="flex-1 p-4 md:p-8 pb-32">
-        <div className="max-w-2xl mx-auto md:max-w-5xl">
+      <main className={`flex-1 p-3 md:p-6 pb-24 ${!hideNav ? 'lg:pr-24' : ''}`}>
+        <div className="max-w-5xl mx-auto">
           {children}
         </div>
       </main>
 
-      {/* Persistent Bottom Nav */}
-      <BottomNav currentView={currentView} setView={setView} />
+      <AnimatePresence>
+        {!hideNav && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed bottom-0 left-0 right-0 lg:bottom-auto lg:top-[38%] lg:right-4 lg:left-auto lg:-translate-y-1/2 z-[70]"
+          >
+            <BottomNav currentView={currentView} setView={setView} />
+          </motion.div>
+        )}
+      </AnimatePresence>
       
-      {/* WhatsApp Floating Button */}
       <a 
         href="https://wa.me/87771902796" 
         target="_blank" 
