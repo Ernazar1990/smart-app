@@ -9,7 +9,7 @@ const supabaseUrl =
 const supabaseAnonKey = 
   (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 
   process.env.VITE_SUPABASE_ANON_KEY || 
-  '';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhkb2diaXlxY3JyamxkZG1naXRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyOTI4NzQsImV4cCI6MjA4NDg2ODg3NH0.pDuX1ZaZPv4-9mUcjGp3w76ti9XNc0D9oXoSSdJrXHs';
 
 const finalUrl = supabaseUrl && supabaseUrl.startsWith('http') 
   ? supabaseUrl 
