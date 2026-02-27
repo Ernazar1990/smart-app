@@ -8,53 +8,22 @@ interface HomeViewProps {
   subjects: Subject[];
   onSelectView: (view: any) => void;
   onSelectSubject: (subjectId: string) => void;
+  homeConfig: any;
+  news: NewsItem[];
 }
 
-const HomeView: React.FC<HomeViewProps> = ({ user, subjects, onSelectView, onSelectSubject }) => {
-  const [news, setNews] = useState<NewsItem[]>([]);
-  const [isLoadingNews, setIsLoadingNews] = useState(false);
-  const [homeConfig, setHomeConfig] = useState({
-    greetingTitle: 'Сәлем, Оқушы! 👋',
-    premiumTitle: 'Барлық сабақтарға қолжетімділік алыңыз! 🚀',
-    premiumDesc: '177 сабақ • 12 пән • Шексіз тест • Балл жүйесі',
-    bannerColor: 'bg-indigo-600',
-    premiumColor: 'from-amber-500 to-orange-600'
-  });
-
+const HomeView: React.FC<HomeViewProps> = ({ user, subjects, onSelectView, onSelectSubject, homeConfig, news }) => {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
 
-  useEffect(() => {
-    const fetchHomeData = async () => {
-      setIsLoadingNews(true);
-      try {
-        // Fetch news
-        const { data: newsData, error: newsError } = await supabase.from('news').select('*').order('created_at', { ascending: false }).limit(3);
-        if (!newsError && newsData && newsData.length > 0) {
-          setNews(newsData);
-        } else {
-          // Fallback sample news if DB is empty
-          setNews([
-            { 
-              id: 'sample-1', 
-              title: 'ҰБТ-2026: Жаңа өзгерістер мен дайындық жоспары', 
-              content: 'Биылғы ҰБТ-дағы басты жаңалықтар мен пәндер бойынша дайындық кеңестерін оқыңыз.', 
-              date: new Date().toLocaleDateString('kk-KZ'),
-              image: 'https://picsum.photos/seed/news1/800/400'
-            }
-          ]);
-        }
-
-        // Fetch home config
-        const { data: configData, error: configError } = await supabase.from('home_config').select('*').eq('id', 'main').maybeSingle();
-        if (!configError && configData) setHomeConfig(configData.config);
-      } catch (err) {
-        console.warn("Home data fetch failed");
-      } finally {
-        setIsLoadingNews(false);
-      }
-    };
-    fetchHomeData();
-  }, []);
+  const displayNews = news.length > 0 ? news.slice(0, 3) : [
+    { 
+      id: 'sample-1', 
+      title: 'ҰБТ-2026: Жаңа өзгерістер мен дайындық жоспары', 
+      content: 'Биылғы ҰБТ-дағы басты жаңалықтар мен пәндер бойынша дайындық кеңестерін оқыңыз.', 
+      date: new Date().toLocaleDateString('kk-KZ'),
+      image: 'https://picsum.photos/seed/news1/800/400'
+    }
+  ];
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-20 animate-in fade-in duration-700">
@@ -156,35 +125,27 @@ const HomeView: React.FC<HomeViewProps> = ({ user, subjects, onSelectView, onSel
         <div className="flex justify-between items-end px-2">
           <h2 className="text-lg font-black font-outfit text-slate-800 dark:text-white uppercase tracking-tight">Жаңалықтар</h2>
         </div>
-        {news.length > 0 ? (
-          <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 px-2">
-            {news.map((item) => (
-              <div 
-                key={item.id} 
-                className="min-w-[260px] md:min-w-[300px] bg-white dark:bg-slate-800 rounded-[28px] border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col group cursor-pointer hover:border-indigo-500 transition-all"
-              >
-                {item.image ? (
-                  <img src={item.image} alt="" className="h-36 w-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                ) : (
-                  <div className="h-36 w-full bg-slate-50 dark:bg-slate-900/50 flex items-center justify-center">
-                    <i className="fas fa-newspaper text-3xl text-slate-200 dark:text-slate-700"></i>
-                  </div>
-                )}
-                <div className="p-5 space-y-2">
-                  <span className="text-[7px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-lg uppercase tracking-widest">{item.date}</span>
-                  <h3 className="font-black text-slate-800 dark:text-slate-100 text-xs font-outfit line-clamp-2 leading-tight">{item.title}</h3>
-                  <p className="text-[9px] text-slate-400 font-medium line-clamp-2 leading-relaxed">{item.content}</p>
+        <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 px-2">
+          {displayNews.map((item) => (
+            <div 
+              key={item.id} 
+              className="min-w-[260px] md:min-w-[300px] bg-white dark:bg-slate-800 rounded-[28px] border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col group cursor-pointer hover:border-indigo-500 transition-all"
+            >
+              {item.image ? (
+                <img src={item.image} alt="" className="h-36 w-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              ) : (
+                <div className="h-36 w-full bg-slate-50 dark:bg-slate-900/50 flex items-center justify-center">
+                  <i className="fas fa-newspaper text-3xl text-slate-200 dark:text-slate-700"></i>
                 </div>
+              )}
+              <div className="p-5 space-y-2">
+                <span className="text-[7px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-lg uppercase tracking-widest">{item.date}</span>
+                <h3 className="font-black text-slate-800 dark:text-slate-100 text-xs font-outfit line-clamp-2 leading-tight">{item.title}</h3>
+                <p className="text-[9px] text-slate-400 font-medium line-clamp-2 leading-relaxed">{item.content}</p>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="px-2">
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-[28px] border border-dashed border-gray-200 dark:border-slate-700 text-center">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Әзірге жаңалықтар жоқ</p>
             </div>
-          </div>
-        )}
+          ))}
+        </div>
       </section>
 
       {/* 4. Subject Grid */}

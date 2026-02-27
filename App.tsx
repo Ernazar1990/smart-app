@@ -30,7 +30,7 @@ import RoadmapView from './components/RoadmapView';
 import TournamentView from './components/TournamentView';
 import TestView from './components/TestView';
 import { motion } from 'motion/react';
-import { AppView, UserProgress, Lesson, Module, StaffMember, UserMarathon } from './types';
+import { AppView, UserProgress, Lesson, Module, StaffMember, UserMarathon, NewsItem } from './types';
 import { SUBJECTS, MODULES_BY_SUBJECT } from './constants';
 import { supabase } from './supabaseClient';
 
@@ -56,11 +56,36 @@ const App: React.FC = () => {
     role: 'student', pointsHistory: []
   });
 
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [homeConfig, setHomeConfig] = useState({
+    greetingTitle: 'Сәлем, Оқушы! 👋',
+    premiumTitle: 'Барлық сабақтарға қолжетімділік алыңыз! 🚀',
+    premiumDesc: '177 сабақ • 12 пән • Шексіз тест • Балл жүйесі',
+    bannerColor: 'bg-indigo-600',
+    premiumColor: 'from-amber-500 to-orange-600'
+  });
+
+  const refreshData = async () => {
+    try {
+      // Fetch news
+      const { data: newsData, error: newsError } = await supabase.from('news').select('*').order('created_at', { ascending: false });
+      if (!newsError && newsData) setNews(newsData);
+
+      // Fetch home config
+      const { data: configData, error: configError } = await supabase.from('home_config').select('*').eq('id', 'main').maybeSingle();
+      if (!configError && configData) setHomeConfig(configData.config);
+    } catch (err) {
+      console.warn("Data refresh failed");
+    }
+  };
+
   // Supabase-тен деректерді жүктеу
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
+        await refreshData();
+        
         const { data: modulesData, error: mError } = await supabase.from('modules').select('*');
         if (!mError && modulesData && modulesData.length > 0) {
           const formattedModules: Record<string, Module[]> = {};
@@ -142,7 +167,7 @@ const App: React.FC = () => {
     }
 
     switch (currentView) {
-      case 'home': return <HomeView user={user} subjects={SUBJECTS} onSelectView={setCurrentView} onSelectSubject={(id) => { setSelectedSubjectId(id); setCurrentView('module-list'); }} />;
+      case 'home': return <HomeView user={user} subjects={SUBJECTS} onSelectView={setCurrentView} onSelectSubject={(id) => { setSelectedSubjectId(id); setCurrentView('module-list'); }} homeConfig={homeConfig} news={news} />;
       case 'module-list': return <ModuleList user={user} onSelectLesson={setSelectedLesson} modules={selectedSubjectId ? (allModules[selectedSubjectId] || []) : []} subjects={SUBJECTS} selectedSubjectId={selectedSubjectId} onSelectSubject={setSelectedSubjectId} />;
       case 'ai-tools-hub': return <AIToolsHub onSelectView={setCurrentView} />;
       case 'profile': return <ProfileView user={user} onLogout={() => setIsLoggedIn(false)} onSelectView={setCurrentView} />;
@@ -174,8 +199,23 @@ const App: React.FC = () => {
       case 'admin-home':
       case 'admin-unis':
       case 'admin-ai':
-        return <AdminPanel currentView={currentView} setView={setCurrentView} allModules={allModules} setAllModules={setAllModules} staffList={staffList} setStaffList={setStaffList} user={user} />;
-      default: return <HomeView user={user} subjects={SUBJECTS} onSelectView={setCurrentView} onSelectSubject={(id) => { setSelectedSubjectId(id); setCurrentView('module-list'); }} />;
+        return (
+          <AdminPanel 
+            currentView={currentView} 
+            setView={setCurrentView} 
+            allModules={allModules} 
+            setAllModules={setAllModules} 
+            staffList={staffList} 
+            setStaffList={setStaffList} 
+            user={user}
+            homeConfig={homeConfig}
+            setHomeConfig={setHomeConfig}
+            news={news}
+            setNews={setNews}
+            refreshData={refreshData}
+          />
+        );
+      default: return <HomeView user={user} subjects={SUBJECTS} onSelectView={setCurrentView} onSelectSubject={(id) => { setSelectedSubjectId(id); setCurrentView('module-list'); }} homeConfig={homeConfig} news={news} />;
     }
   };
 

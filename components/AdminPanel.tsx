@@ -50,7 +50,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isSaving, setIsSaving] = useState(false);
 
   // News state
-  const [news, setNews] = useState<NewsItem[]>([]);
   const [isNewsLoading, setIsNewsLoading] = useState(false);
   const [showNewsModal, setShowNewsModal] = useState(false);
   const [editingNews, setEditingNews] = useState<Partial<NewsItem> | null>(null);
@@ -62,11 +61,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   ]);
 
   const allowedSubjects = SUBJECTS;
-
-  const fetchNews = async () => {
-    // This is now handled by refreshData in props
-    await refreshData();
-  };
 
   const handleSaveNews = async () => {
     if (!editingNews?.title || !editingNews?.content) return;
