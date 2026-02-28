@@ -119,7 +119,7 @@ const App: React.FC = () => {
     if (!userData) return;
     const email = userData.email?.toLowerCase().trim();
     const staff = staffList.find(s => s.email.toLowerCase() === email);
-    const isOwner = email === 'nur.abuuadi@gmail.com';
+    const isOwner = email === 'nur.abuuadi@gmail.com' || email === 'ernazarnurtay@gmail.com';
     const isAdmin = !!staff || isOwner;
     
     const newUser: UserProgress = { 
@@ -134,6 +134,48 @@ const App: React.FC = () => {
     localStorage.setItem('smart_user_session', JSON.stringify(newUser));
   };
 
+  const updateSubjects = async (subjects: string[]) => {
+    const updatedUser = { ...user, chosenElectives: subjects };
+    setUser(updatedUser);
+    localStorage.setItem('smart_user_session', JSON.stringify(updatedUser));
+    
+    try {
+      await supabase
+        .from('users')
+        .update({ chosenElectives: subjects })
+        .eq('email', user.email);
+    } catch (err) {
+      console.error('Failed to update subjects in Supabase:', err);
+    }
+  };
+
+  const updateCompletedLesson = async (lessonId: string) => {
+    if (!user.completedLessons.includes(lessonId)) {
+      const newCompleted = [...user.completedLessons, lessonId];
+      const updatedUser = {
+        ...user,
+        completedLessons: newCompleted,
+        points: user.points + 10,
+        xp: (user.xp || 0) + 50
+      };
+      setUser(updatedUser);
+      localStorage.setItem('smart_user_session', JSON.stringify(updatedUser));
+
+      try {
+        await supabase
+          .from('users')
+          .update({ 
+            completedLessons: newCompleted,
+            points: updatedUser.points,
+            xp: updatedUser.xp
+          })
+          .eq('email', user.email);
+      } catch (err) {
+        console.error('Failed to update progress in Supabase:', err);
+      }
+    }
+  };
+
   const renderContent = () => {
     if (isLoading) return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
@@ -146,17 +188,8 @@ const App: React.FC = () => {
       return (
         <LessonContent 
           lesson={selectedLesson} 
-          onComplete={() => {
-            if (!user.completedLessons.includes(selectedLesson.id)) {
-              const newCompleted = [...user.completedLessons, selectedLesson.id];
-              setUser({
-                ...user,
-                completedLessons: newCompleted,
-                points: user.points + 10,
-                xp: (user.xp || 0) + 50
-              });
-            }
-          }} 
+          user={user}
+          onComplete={() => updateCompletedLesson(selectedLesson.id)} 
           onClose={() => setSelectedLesson(null)} 
           onOpenView={(view) => {
             setSelectedLesson(null);
@@ -175,7 +208,7 @@ const App: React.FC = () => {
       case 'subscription': return <SubscriptionView />;
       case 'rating': return <RatingView user={user} onBack={() => setCurrentView('profile')} />;
       case 'marathon': return <MarathonView user={user} onUpdateMarathon={(m) => setUser({...user, marathon: m})} />;
-      case 'subject-selection': return <SubjectSelectionView user={user} onUpdateSubjects={(s) => setUser({...user, chosenElectives: s})} onClose={() => setCurrentView('home')} />;
+      case 'subject-selection': return <SubjectSelectionView user={user} onUpdateSubjects={updateSubjects} onClose={() => setCurrentView('home')} />;
       case 'periodic-table': return <PeriodicTable onBack={() => setCurrentView('ai-tools-hub')} />;
       case 'ai-tutor': return <AITutor onBack={() => setCurrentView('ai-tools-hub')} />;
       case 'scanner': return <ScannerView onBack={() => setCurrentView('ai-tools-hub')} />;

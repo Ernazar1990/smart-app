@@ -15,7 +15,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setView, userR
     { id: 'admin-news', icon: 'fa-rss', label: 'Жаңалықтар' },
     { id: 'admin-users', icon: 'fa-users', label: 'Оқушылар' },
     { id: 'admin-staff', icon: 'fa-user-tie', label: 'Қызметкерлер' },
-    { id: 'admin-unis', icon: 'fa-id-card', label: 'Мамандықтар' },
+    { id: 'admin-unis', icon: 'fa-university', label: 'ЖОО' },
     { id: 'admin-ai', icon: 'fa-robot', label: 'AI Hub' },
   ];
 

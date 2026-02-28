@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserProgress } from '../types';
+import { supabase } from '../supabaseClient';
 
 interface AuthScreenProps {
   onAuth: (userData: Partial<UserProgress>) => void;
@@ -10,6 +11,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
   const [mode, setMode] = useState<'login' | 'register' | 'pin' | 'forgot-password'>('login');
   const [step, setStep] = useState(1);
   const [pinInput, setPinInput] = useState('');
+  const [loading, setLoading] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -60,29 +62,95 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
     }
   };
 
-  const handleFinalize = () => {
+  const handleFinalize = async () => {
     if (formData.pin.length !== 4) {
       setError('4 таңбалы ПИН-кодты енгізіңіз');
       return;
     }
-    const finalData: Partial<UserProgress> = {
-      ...formData,
-      chosenElectives: formData.electives === 'creative' ? ['creative'] : formData.electives.split('-')
-    };
-    localStorage.setItem('smart_user_pin', formData.pin);
-    localStorage.setItem('smart_user_name', formData.name);
-    localStorage.setItem('smart_last_email', formData.email);
-    onAuth(finalData);
+    setLoading(true);
+    setError('');
+    try {
+      // 1. Sign up with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.pass,
+      });
+
+      if (authError) throw authError;
+
+      // 2. Create profile in 'users' table
+      const finalData: Partial<UserProgress> = {
+        email: formData.email,
+        name: formData.name,
+        phone: formData.phone,
+        region: formData.region,
+        school: formData.school,
+        points: 0,
+        xp: 0,
+        subscription: 'Free',
+        role: 'student',
+        completedLessons: [],
+        chosenElectives: formData.electives === 'creative' ? ['creative'] : formData.electives.split('-')
+      };
+
+      const { error: profileError } = await supabase.from('users').upsert([finalData]);
+      if (profileError) throw profileError;
+
+      localStorage.setItem('smart_user_pin', formData.pin);
+      localStorage.setItem('smart_user_name', formData.name);
+      localStorage.setItem('smart_last_email', formData.email);
+      
+      onAuth(finalData);
+    } catch (err: any) {
+      setError(err.message || 'Тіркелу кезінде қате кетті');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleLogin = () => {
-    if (!formData.email) {
-      setError('Поштаны енгізіңіз');
+  const handleLogin = async () => {
+    if (!formData.email || !formData.pass) {
+      setError('Пошта мен құпия сөзді енгізіңіз');
       return;
     }
-    localStorage.setItem('smart_last_email', formData.email);
-    const name = formData.email === 'ernazarnurtay@gmail.com' ? 'Админ' : 'Пайдаланушы';
-    onAuth({ email: formData.email, name });
+    setLoading(true);
+    setError('');
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.pass,
+      });
+
+      if (authError) throw authError;
+
+      // Fetch profile from 'users' table
+      const { data: profile, error: profileError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', formData.email)
+        .single();
+
+      if (profileError) {
+        // If profile doesn't exist but auth succeeded, create a basic one
+        const basicProfile: Partial<UserProgress> = { 
+          email: formData.email, 
+          name: 'Пайдаланушы', 
+          role: 'student' as const, 
+          subscription: 'Free', 
+          points: 0, 
+          completedLessons: [] 
+        };
+        onAuth(basicProfile);
+      } else {
+        onAuth(profile);
+      }
+      
+      localStorage.setItem('smart_last_email', formData.email);
+    } catch (err: any) {
+      setError('Пошта немесе құпия сөз қате');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePinDigit = (digit: string) => {
@@ -146,7 +214,10 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
           <div className="space-y-4">
             <input type="email" placeholder="Email пошта" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm outline-none font-bold" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
             <input type="password" placeholder="Құпия сөз" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm outline-none font-bold" value={formData.pass} onChange={e => setFormData({...formData, pass: e.target.value})} />
-            <button onClick={handleLogin} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-lg font-outfit">Кіру</button>
+            {error && <p className="text-red-500 text-[10px] font-bold text-center uppercase tracking-widest">{error}</p>}
+            <button onClick={handleLogin} disabled={loading} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-lg font-outfit disabled:opacity-50">
+              {loading ? 'Кіру...' : 'Кіру'}
+            </button>
             <button onClick={() => setMode('register')} className="w-full text-emerald-600 font-black text-xs text-center uppercase tracking-widest">Жаңа аккаунт ашу</button>
           </div>
         ) : (
@@ -163,15 +234,29 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
                 <input type="tel" placeholder="Телефон" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 rounded-2xl shadow-sm font-bold" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
               </div>
             )}
+            {step === 2 && (
+              <div className="space-y-4 animate-in slide-in-from-right">
+                <input type="text" placeholder="Аймақ (мысалы: Алматы)" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 rounded-2xl shadow-sm font-bold" value={formData.region} onChange={e => setFormData({...formData, region: e.target.value})} />
+                <input type="text" placeholder="Мектеп" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 rounded-2xl shadow-sm font-bold" value={formData.school} onChange={e => setFormData({...formData, school: e.target.value})} />
+              </div>
+            )}
+            {step === 3 && (
+              <div className="space-y-4 animate-in slide-in-from-right">
+                <input type="password" placeholder="Құпия сөз" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 rounded-2xl shadow-sm font-bold" value={formData.pass} onChange={e => setFormData({...formData, pass: e.target.value})} />
+                <input type="password" placeholder="Құпия сөзді растау" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 rounded-2xl shadow-sm font-bold" value={formData.passConfirm} onChange={e => setFormData({...formData, passConfirm: e.target.value})} />
+              </div>
+            )}
             {step === 4 && (
               <div className="space-y-4 text-center animate-in zoom-in">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Кіру үшін ПИН-код орнатыңыз</p>
                 <input type="text" maxLength={4} placeholder="0000" className="w-40 mx-auto p-5 bg-emerald-50 rounded-[30px] text-center text-4xl font-black tracking-[0.3em] outline-none text-emerald-700 focus:border-emerald-500 transition-all font-outfit" onChange={e => setFormData({...formData, pin: e.target.value})} />
               </div>
             )}
+            {error && <p className="text-red-500 text-[10px] font-bold text-center uppercase tracking-widest">{error}</p>}
             <div className="flex gap-3">
               {step > 1 && <button onClick={() => setStep(step - 1)} className="flex-1 bg-gray-100 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-gray-500">Артқа</button>}
-              <button onClick={step === 4 ? handleFinalize : handleRegisterNext} className="flex-[2] bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-lg font-outfit">
-                {step === 4 ? 'Аяқтау' : 'Келесі'}
+              <button onClick={step === 4 ? handleFinalize : handleRegisterNext} disabled={loading} className="flex-[2] bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-lg font-outfit disabled:opacity-50">
+                {loading ? 'Жүктелуде...' : (step === 4 ? 'Аяқтау' : 'Келесі')}
               </button>
             </div>
           </div>

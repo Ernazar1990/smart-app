@@ -234,5 +234,11 @@ export const MOCK_QUESTIONS: Question[] = [
   { id: 'm1', subject: 'math-lit', text: '2 + 2 * 2 нешеге тең?', options: ['8', '6', '4', '2'], correctAnswer: 1 }
 ];
 export const STRATEGIC_COMBINATIONS = [
-  { id: 'bio-chem', name: 'Химия + Биология', subjects: ['chem', 'bio'], icon: 'fa-vials', color: 'from-indigo-500 to-emerald-500', desc: 'Медициналық мамандықтар' }
+  { id: 'bio-chem', name: 'Химия + Биология', subjects: ['chem', 'bio'], icon: 'fa-vials', color: 'from-indigo-500 to-emerald-500', desc: 'Медицина, биология, экология, ветеринария' },
+  { id: 'math-phys', name: 'Математика + Физика', subjects: ['math', 'phys'], icon: 'fa-atom', color: 'from-amber-500 to-blue-500', desc: 'IT, инженерия, архитектура, авиация' },
+  { id: 'math-it', name: 'Математика + Информатика', subjects: ['math', 'it'], icon: 'fa-code', color: 'from-amber-500 to-slate-700', desc: 'Бағдарламалау, Data Science, киберқауіпсіздік' },
+  { id: 'geo-math', name: 'География + Математика', subjects: ['geo', 'math'], icon: 'fa-globe', color: 'from-sky-500 to-amber-500', desc: 'Логистика, кадастр, жерге орналастыру' },
+  { id: 'kaz-lit-history', name: 'Қаз. әдебиеті + Тарих', subjects: ['kaz-lit', 'history-world'], icon: 'fa-pen-nib', color: 'from-orange-600 to-red-600', desc: 'Журналистика, филология, өнертану' },
+  { id: 'history-law', name: 'Дүниежүзі тарихы + Құқық', subjects: ['history-world', 'law'], icon: 'fa-gavel', color: 'from-red-600 to-zinc-600', desc: 'Заңгерлік, халықаралық қатынастар' },
+  { id: 'english-history', name: 'Ағылшын + Тарих', subjects: ['english', 'history-world'], icon: 'fa-language', color: 'from-pink-500 to-red-600', desc: 'Аударма ісі, туризм, халықаралық қатынастар' }
 ];

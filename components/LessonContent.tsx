@@ -1,19 +1,54 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Lesson, AppView } from '../types';
+import { Lesson, AppView, UserProgress } from '../types';
 
 interface LessonContentProps {
   lesson: Lesson;
+  user: UserProgress;
   onComplete: () => void;
   onClose: () => void;
   onOpenView?: (view: AppView) => void;
 }
 
-const LessonContent: React.FC<LessonContentProps> = ({ lesson, onComplete, onClose, onOpenView }) => {
+const LessonContent: React.FC<LessonContentProps> = ({ lesson, user, onComplete, onClose, onOpenView }) => {
   const [activeTab, setActiveTab] = useState<'video' | 'presentation' | 'quiz' | 'homework' | 'correction'>('video');
   const [completedTabs, setCompletedTabs] = useState<string[]>([]);
   const [videoWatched, setVideoWatched] = useState(false);
+
+  const isLockedForUser = !lesson.isFree && user.subscription === 'Free';
+
+  if (isLockedForUser) {
+    return (
+      <div className="fixed inset-0 z-[60] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
+        <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-[40px] p-10 text-center space-y-8 shadow-2xl animate-in zoom-in">
+          <div className="w-24 h-24 bg-amber-100 text-amber-600 rounded-[35px] flex items-center justify-center text-4xl mx-auto shadow-sm">
+            <i className="fas fa-lock"></i>
+          </div>
+          <div className="space-y-3">
+            <h3 className="text-2xl font-black font-outfit text-slate-900 dark:text-white">Бұл сабақ жабық 🔒</h3>
+            <p className="text-slate-500 text-sm leading-relaxed">
+              Бұл сабақты көру үшін <b>Premium</b> жазылымы қажет. Бірінші сабақтар барлығына тегін, ал қалғандары тек жазылушыларға қолжетімді.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 pt-4">
+            <button 
+              onClick={() => onOpenView?.('subscription')}
+              className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 dark:shadow-none hover:scale-[1.02] transition-all"
+            >
+              Premium-ға өту
+            </button>
+            <button 
+              onClick={onClose}
+              className="w-full py-5 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all"
+            >
+              Артқа
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const tabs = [
     { id: 'video', label: 'Видео', icon: 'fa-play', required: true },

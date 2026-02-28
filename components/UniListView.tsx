@@ -1,7 +1,8 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { University, Specialty, UserProgress, InternationalGrant } from '../types';
 import { INTERNATIONAL_GRANTS } from '../constants';
+import { supabase } from '../supabaseClient';
 
 interface UniListViewProps {
   user: UserProgress;
@@ -64,24 +65,48 @@ const UniListView: React.FC<UniListViewProps> = ({ user }) => {
   const [userScore, setUserScore] = useState<number>(user.estimatedScore || 0);
   const [selectedUni, setSelectedUni] = useState<University | null>(null);
   const [selectedGrant, setSelectedGrant] = useState<InternationalGrant | null>(null);
+  
+  const [unis, setUnis] = useState<University[]>([]);
+  const [specialties, setSpecialties] = useState<Specialty[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [unisRes, specsRes] = await Promise.all([
+          supabase.from('universities').select('*').order('name'),
+          supabase.from('specialties').select('*').order('name')
+        ]);
+        
+        if (unisRes.data) setUnis(unisRes.data);
+        if (specsRes.data) setSpecialties(specsRes.data);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const filteredUnis = useMemo(() => {
-    return UNIS.filter(uni => {
+    return unis.filter(uni => {
       const matchesSearch = uni.name.toLowerCase().includes(search.toLowerCase()) || 
                           uni.location.toLowerCase().includes(search.toLowerCase());
       const matchesRegion = selectedRegions.length === 0 || selectedRegions.includes(uni.region);
       return matchesSearch && matchesRegion;
     });
-  }, [search, selectedRegions]);
+  }, [search, selectedRegions, unis]);
 
   const predictions = useMemo(() => {
     if (userScore <= 0) return [];
-    return SPECIALTIES_DB.filter(spec => {
+    return specialties.filter(spec => {
       const matchesSubjects = spec.subjects.every(s => user.chosenElectives.includes(s));
       const scoreDiff = userScore - spec.minScore;
       return matchesSubjects && scoreDiff >= -15; 
     });
-  }, [userScore, user.chosenElectives]);
+  }, [userScore, user.chosenElectives, specialties]);
 
   const toggleRegion = (reg: string) => {
     setSelectedRegions(prev => 
@@ -243,24 +268,32 @@ const UniListView: React.FC<UniListViewProps> = ({ user }) => {
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-3">
-              {filteredUnis.map(uni => (
-                <button 
-                  key={uni.id}
-                  onClick={() => setSelectedUni(uni)}
-                  className="bg-white dark:bg-slate-800 p-3 rounded-[25px] border border-gray-100 dark:border-slate-700 shadow-sm flex items-center gap-4 text-left hover:border-emerald-500 transition-all group"
-                >
-                  <div className="w-14 h-14 bg-gray-50 dark:bg-slate-900 p-2 rounded-2xl flex items-center justify-center border border-gray-100 dark:border-slate-700 shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
-                    <UniLogoImage uni={uni} className="max-h-full max-w-full" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-black text-gray-900 dark:text-white text-xs leading-snug line-clamp-2 font-outfit">{uni.name}</h4>
-                    <span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">{uni.location}</span>
-                  </div>
-                  <i className="fas fa-chevron-right text-gray-200 dark:text-slate-700 px-1 group-hover:translate-x-1 transition-transform text-[10px]"></i>
-                </button>
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="py-20 text-center animate-pulse text-slate-400 text-[10px] font-black uppercase tracking-widest">Жүктелуде...</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3">
+                {filteredUnis.length === 0 ? (
+                  <div className="py-20 text-center text-slate-400 text-[10px] font-black uppercase tracking-widest">Университеттер табылмады</div>
+                ) : (
+                  filteredUnis.map(uni => (
+                    <button 
+                      key={uni.id}
+                      onClick={() => setSelectedUni(uni)}
+                      className="bg-white dark:bg-slate-800 p-3 rounded-[25px] border border-gray-100 dark:border-slate-700 shadow-sm flex items-center gap-4 text-left hover:border-emerald-500 transition-all group"
+                    >
+                      <div className="w-14 h-14 bg-gray-50 dark:bg-slate-900 p-2 rounded-2xl flex items-center justify-center border border-gray-100 dark:border-slate-700 shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
+                        <UniLogoImage uni={uni} className="max-h-full max-w-full" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-black text-gray-900 dark:text-white text-xs leading-snug line-clamp-2 font-outfit">{uni.name}</h4>
+                        <span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">{uni.location}</span>
+                      </div>
+                      <i className="fas fa-chevron-right text-gray-200 dark:text-slate-700 px-1 group-hover:translate-x-1 transition-transform text-[10px]"></i>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
          </div>
       )}
 

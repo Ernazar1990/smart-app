@@ -38,7 +38,7 @@ const StudentLayout: React.FC<StudentLayoutProps> = ({ children, currentView, se
               { id: 'roadmap', label: 'Жоспар' },
               { id: 'module-list', label: 'Курстар' },
               { id: 'rating', label: 'Рейтинг' },
-              { id: 'uni-list', label: 'Дүкен' }
+              { id: 'uni-list', label: 'ЖОО' }
             ].map((item) => (
               <button 
                 key={item.id}

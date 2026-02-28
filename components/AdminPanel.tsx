@@ -73,15 +73,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       };
       
       if (editingNews.id) {
-        await supabase.from('news').update(newsData).eq('id', editingNews.id);
+        const { error } = await supabase.from('news').update(newsData).eq('id', editingNews.id);
+        if (error) throw error;
       } else {
-        await supabase.from('news').insert([newsData]);
+        const { error } = await supabase.from('news').insert([newsData]);
+        if (error) throw error;
       }
       setShowNewsModal(false);
       setEditingNews(null);
       await refreshData();
+      alert('Жаңалық сақталды!');
     } catch (err) {
       console.error("Error saving news:", err);
+      alert('Қате орын алды: ' + (err as any).message);
     } finally {
       setIsSaving(false);
     }
@@ -90,10 +94,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleDeleteNews = async (id: string) => {
     if (!confirm('Жаңалықты өшіруге сенімдісіз бе?')) return;
     try {
-      await supabase.from('news').delete().eq('id', id);
+      const { error } = await supabase.from('news').delete().eq('id', id);
+      if (error) throw error;
       await refreshData();
     } catch (err) {
       console.error("Error deleting news:", err);
+      alert('Қате орын алды: ' + (err as any).message);
     }
   };
 
@@ -167,21 +173,193 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     else if (currentView === 'admin-ai') setActiveSubTab('ai');
   }, [currentView]);
 
+  const fetchStudents = async () => {
+    try {
+      const { data, error } = await supabase.from('users').select('*').order('points', { ascending: false });
+      if (!error && data) setStudents(data);
+    } catch (err) {
+      console.error("Error fetching students:", err);
+    }
+  };
+
+  const seedInitialUsers = async () => {
+    if (!confirm('Тесттік оқушыларды жүктеуге сенімдісіз бе?')) return;
+    setIsSaving(true);
+    try {
+      const initialUsers = [
+        { email: 'student1@mail.kz', name: 'Әлихан Батыр', points: 1200, xp: 5000, subscription: 'premium', chosenElectives: ['chem', 'bio'], role: 'student', completedLessons: [] },
+        { email: 'student2@mail.kz', name: 'Аружан Серік', points: 850, xp: 3200, subscription: 'none', chosenElectives: ['math', 'phys'], role: 'student', completedLessons: [] }
+      ];
+      const { error } = await supabase.from('users').upsert(initialUsers);
+      if (error) throw error;
+      alert('Оқушылар жүктелді!');
+      fetchStudents();
+    } catch (err) {
+      console.error("Users seed error:", err);
+      alert('Қате: ' + (err as any).message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (activeSubTab === 'unis') {
+      fetchUniversities();
+      fetchSpecialties();
+    }
+    if (activeSubTab === 'ai') fetchSpecialties();
+    if (activeSubTab === 'news') refreshData();
+    if (activeSubTab === 'content') refreshData();
+    if (activeSubTab === 'users') fetchStudents();
+  }, [activeSubTab]);
+
+  const seedInitialData = async () => {
+    if (!confirm('Бастапқы университеттер мен мамандықтарды базаға жүктеуге сенімдісіз бе?')) return;
+    setIsSaving(true);
+    try {
+      const initialUnis = [
+        { id: 'enu', name: 'Л.Н. Гумилев атындағы Еуразия ұлттық университеті', logo: 'https://logo.clearbit.com/enu.kz', location: 'Астана', region: 'Астана қаласы', type: 'National', specialtiesCount: 51, minScore: 105, averagePrice: '1 100 000 ₸', hasDormitory: true, website: 'https://enu.kz', address: 'Сәтбаев көшесі, 2', phone: '+7 (7172) 70-95-00' },
+        { id: 'nu', name: 'Назарбаев Университеті (NU)', logo: 'https://logo.clearbit.com/nu.edu.kz', location: 'Астана', region: 'Астана қаласы', type: 'International', specialtiesCount: 60, minScore: 130, averagePrice: 'Грант/Ақылы', hasDormitory: true, website: 'https://nu.edu.kz', address: 'Қабанбай батыр даңғылы, 53', phone: '+7 (7172) 70-66-88' },
+        { id: 'aitu', name: 'Астана IT университеті', logo: 'https://logo.clearbit.com/astanait.edu.kz', location: 'Астана', region: 'Астана қаласы', type: 'Private', specialtiesCount: 4, minScore: 115, averagePrice: '1 400 000 ₸', hasDormitory: true, website: 'https://astanait.edu.kz', address: 'EXPO, Мәңгілік Ел, 55/11', phone: '+7 (7172) 64-57-10' },
+        { id: 'kazguu', name: 'М. Нарикбаев атындағы КАЗГЮУ Университеті', logo: 'https://logo.clearbit.com/kazguu.kz', location: 'Астана', region: 'Астана қаласы', type: 'Private', specialtiesCount: 9, minScore: 110, averagePrice: '1 800 000 ₸', hasDormitory: true, website: 'https://kazguu.kz', address: 'Қорғалжын тас жолы, 8', phone: '+7 (7172) 70-30-30' },
+        { id: 'amu', name: 'Астана Медициналық университеті', logo: 'https://logo.clearbit.com/amu.kz', location: 'Астана', region: 'Астана қаласы', type: 'State', specialtiesCount: 3, minScore: 125, averagePrice: '1 500 000 ₸', hasDormitory: true, website: 'https://amu.kz', address: 'Бейбітшілік к-сі, 49А', phone: '+7 (7172) 53-94-24' }
+      ];
+
+      const initialSpecs = [
+        { id: 's1', code: 'B057', name: 'Ақпараттық технологиялар', subjects: ['math', 'phys'], minScore: 110, grants: 2500 },
+        { id: 's2', code: 'B053', name: 'Химия', subjects: ['chem', 'bio'], minScore: 95, grants: 800 },
+        { id: 's3', code: 'B086', name: 'Медицина', subjects: ['chem', 'bio'], minScore: 125, grants: 1200 }
+      ];
+
+      // Use upsert and check errors explicitly
+      const { error: uniError } = await supabase.from('universities').upsert(initialUnis);
+      if (uniError) {
+        console.error("Uni seed error:", uniError);
+        throw new Error("Университеттерді жүктеу қатесі: " + uniError.message);
+      }
+
+      const { error: specError } = await supabase.from('specialties').upsert(initialSpecs);
+      if (specError) {
+        console.error("Spec seed error:", specError);
+        throw new Error("Мамандықтарды жүктеу қатесі: " + specError.message);
+      }
+      
+      alert('Деректер сәтті жүктелді!');
+      fetchUniversities();
+      fetchSpecialties();
+    } catch (err) {
+      console.error("Seed error:", err);
+      alert('Қате: ' + (err as any).message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const seedInitialContent = async () => {
+    if (!confirm('Бастапқы оқу модульдерін жүктеуге сенімдісіз бе?')) return;
+    setIsSaving(true);
+    try {
+      const { MODULES_BY_SUBJECT } = await import('../constants');
+      for (const [subId, modules] of Object.entries(MODULES_BY_SUBJECT)) {
+        await supabase.from('modules').upsert({
+          subject_id: subId,
+          data: modules
+        }, { onConflict: 'subject_id' });
+      }
+      alert('Оқу мазмұны сәтті жүктелді!');
+      refreshData();
+    } catch (err) {
+      console.error("Content seed error:", err);
+      alert('Қате: ' + (err as any).message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const seedInitialNews = async () => {
+    if (!confirm('Бастапқы жаңалықтарды жүктеуге сенімдісіз бе?')) return;
+    setIsSaving(true);
+    try {
+      const initialNews = [
+        { id: 'n1', title: 'ҰБТ-2026: Жаңа формат', content: 'Биылғы ҰБТ форматындағы өзгерістер туралы толық ақпарат...', date: '27.02.2026' },
+        { id: 'n2', title: 'Гранттар саны артты', content: 'Мемлекеттік гранттар саны биыл 15%-ға көбейді...', date: '26.02.2026' }
+      ];
+      await supabase.from('news').upsert(initialNews);
+      alert('Жаңалықтар сәтті жүктелді!');
+      refreshData();
+    } catch (err) {
+      console.error("News seed error:", err);
+      alert('Қате: ' + (err as any).message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const seedInitialHomeConfig = async () => {
+    if (!confirm('Бастапқы басты бет баптауларын жүктеуге сенімдісіз бе?')) return;
+    setIsSaving(true);
+    try {
+      const defaultConfig = {
+        greetingTitle: 'Сәлем, Оқушы! 👋',
+        premiumTitle: 'Барлық сабақтарға қолжетімділік алыңыз! 🚀',
+        premiumDesc: '177 сабақ • 12 пән • Шексіз тест • Балл жүйесі',
+        bannerColor: 'bg-indigo-600',
+        premiumColor: 'from-amber-500 to-orange-600'
+      };
+      const { error } = await supabase.from('home_config').upsert({
+        id: 'main',
+        config: defaultConfig
+      }, { onConflict: 'id' });
+      if (error) throw error;
+      alert('Басты бет баптаулары жүктелді!');
+      refreshData();
+    } catch (err) {
+      console.error("Home seed error:", err);
+      alert('Қате: ' + (err as any).message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const seedInitialStaff = async () => {
+    if (!confirm('Бастапқы қызметкерлерді жүктеуге сенімдісіз бе?')) return;
+    setIsSaving(true);
+    try {
+      const initialStaff = [
+        { email: 'nur.abuuadi@gmail.com', name: 'Бас Админ', role: 'super-admin', permissions: ['all'] },
+        { email: 'test@mail.kz', name: 'Арман Құратор', role: 'teacher', permissions: ['chem'] }
+      ];
+      const { error } = await supabase.from('staff').upsert(initialStaff);
+      if (error) throw error;
+      alert('Қызметкерлер жүктелді! Бетті жаңартыңыз.');
+      window.location.reload();
+    } catch (err) {
+      console.error("Staff seed error:", err);
+      alert('Қате: ' + (err as any).message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSaveUni = async () => {
     if (!editingUni?.name) return;
     setIsSaving(true);
     try {
       if (editingUni.id) {
-        await supabase.from('universities').update(editingUni).eq('id', editingUni.id);
+        const { error } = await supabase.from('universities').update(editingUni).eq('id', editingUni.id);
+        if (error) throw error;
       } else {
         const newUni = { ...editingUni, id: Date.now().toString() };
-        await supabase.from('universities').insert([newUni]);
+        const { error } = await supabase.from('universities').insert([newUni]);
+        if (error) throw error;
       }
       setShowUniModal(false);
       setEditingUni(null);
       fetchUniversities();
+      alert('ЖОО сақталды!');
     } catch (err) {
       console.error("Error saving university:", err);
+      alert('Қате орын алды: ' + (err as any).message);
     } finally {
       setIsSaving(false);
     }
@@ -190,34 +368,87 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleDeleteUni = async (id: string) => {
     if (!confirm('ЖОО-ны өшіруге сенімдісіз бе?')) return;
     try {
-      await supabase.from('universities').delete().eq('id', id);
+      const { error } = await supabase.from('universities').delete().eq('id', id);
+      if (error) throw error;
       fetchUniversities();
     } catch (err) {
       console.error("Error deleting university:", err);
+      alert('Қате орын алды: ' + (err as any).message);
     }
   };
 
-  const handleSaveStaff = () => {
+  const handleSaveStaff = async () => {
     if (!editingStaff?.name || !editingStaff?.email) return;
-    const newStaff = { ...editingStaff, role: editingStaff.role || 'teacher', permissions: editingStaff.permissions || [] } as StaffMember;
-    setStaffList([...staffList, newStaff]);
-    setShowStaffModal(false);
-    setEditingStaff(null);
+    setIsSaving(true);
+    try {
+      const newStaff = { ...editingStaff, role: editingStaff.role || 'teacher', permissions: editingStaff.permissions || [] } as StaffMember;
+      const { error } = await supabase.from('staff').upsert(newStaff, { onConflict: 'email' });
+      if (error) throw error;
+      
+      setStaffList(prev => {
+        const exists = prev.find(s => s.email === newStaff.email);
+        if (exists) return prev.map(s => s.email === newStaff.email ? newStaff : s);
+        return [...prev, newStaff];
+      });
+      setShowStaffModal(false);
+      setEditingStaff(null);
+      alert('Қызметкер сақталды!');
+    } catch (err) {
+      console.error("Error saving staff:", err);
+      alert('Қате орын алды: ' + (err as any).message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleSaveStudent = () => {
+  const handleDeleteStaff = async (email: string) => {
+    if (!confirm('Қызметкерді өшіруге сенімдісіз бе?')) return;
+    try {
+      const { error } = await supabase.from('staff').delete().eq('email', email);
+      if (error) throw error;
+      setStaffList(prev => prev.filter(s => s.email !== email));
+    } catch (err) {
+      console.error("Error deleting staff:", err);
+      alert('Қате: ' + (err as any).message);
+    }
+  };
+
+  const handleSaveStudent = async () => {
     if (!editingStudent?.name || !editingStudent?.email) return;
-    const newStudent = { 
-      ...editingStudent, 
-      points: editingStudent.points || 0, 
-      subscription: editingStudent.subscription || 'Free', 
-      chosenElectives: editingStudent.chosenElectives || [],
-      role: 'student',
-      completedLessons: []
-    } as UserProgress;
-    setStudents([...students, newStudent]);
-    setShowStudentModal(false);
-    setEditingStudent(null);
+    setIsSaving(true);
+    try {
+      const studentData = {
+        ...editingStudent,
+        points: editingStudent.points || 0,
+        subscription: editingStudent.subscription || 'Free',
+        chosenElectives: editingStudent.chosenElectives || [],
+        role: 'student',
+        completedLessons: editingStudent.completedLessons || []
+      };
+      const { error } = await supabase.from('users').upsert(studentData);
+      if (error) throw error;
+      alert('Оқушы деректері сақталды!');
+      setShowStudentModal(false);
+      setEditingStudent(null);
+      fetchStudents();
+    } catch (err) {
+      console.error("Error saving student:", err);
+      alert('Қате: ' + (err as any).message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteStudent = async (email: string) => {
+    if (!confirm('Оқушыны өшіруге сенімдісіз бе?')) return;
+    try {
+      const { error } = await supabase.from('users').delete().eq('email', email);
+      if (error) throw error;
+      fetchStudents();
+    } catch (err) {
+      console.error("Error deleting student:", err);
+      alert('Қате: ' + (err as any).message);
+    }
   };
 
   const handleSaveSpec = async () => {
@@ -225,15 +456,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setIsSaving(true);
     try {
       if (editingSpec.id) {
-        await supabase.from('specialties').update(editingSpec).eq('id', editingSpec.id);
+        const { error } = await supabase.from('specialties').update(editingSpec).eq('id', editingSpec.id);
+        if (error) throw error;
       } else {
-        await supabase.from('specialties').insert([editingSpec]);
+        const { error } = await supabase.from('specialties').insert([editingSpec]);
+        if (error) throw error;
       }
       setShowSpecModal(false);
       setEditingSpec(null);
       fetchSpecialties();
+      alert('Мамандық сақталды!');
     } catch (err) {
       console.error("Error saving specialty:", err);
+      alert('Қате орын алды: ' + (err as any).message);
     } finally {
       setIsSaving(false);
     }
@@ -253,7 +488,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       alert('Сәтті сақталды!');
     } catch (err) {
       console.error("Error saving modules:", err);
-      alert('Қате орын алды');
+      alert('Қате орын алды: ' + (err as any).message);
     } finally {
       setIsSaving(false);
     }
@@ -310,10 +545,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleDeleteSpec = async (id: string) => {
     if (!confirm('Мамандықты өшіруге сенімдісіз бе?')) return;
     try {
-      await supabase.from('specialties').delete().eq('id', id);
+      const { error } = await supabase.from('specialties').delete().eq('id', id);
+      if (error) throw error;
       fetchSpecialties();
     } catch (err) {
       console.error("Error deleting specialty:", err);
+      alert('Қате орын алды: ' + (err as any).message);
     }
   };
 
@@ -380,16 +617,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="max-w-7xl mx-auto">
           {activeSubTab === 'home' && (
             <div className="bg-white dark:bg-slate-800 p-8 rounded-[40px] border border-gray-100 dark:border-slate-700 shadow-sm space-y-8 animate-in fade-in">
-              <div className="flex justify-between items-center">
-                <h3 className="text-xl font-black font-outfit">Басты бетті басқару</h3>
-                <button 
-                  onClick={handleSaveHomeConfig}
-                  disabled={isSaving}
-                  className="bg-indigo-600 text-white px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all disabled:opacity-50"
-                >
-                  {isSaving ? 'Сақталуда...' : 'Сақтау'}
-                </button>
-              </div>
+                <div className="flex justify-between items-center">
+                   <h3 className="text-xl font-black font-outfit">Басты бетті басқару</h3>
+                   <div className="flex gap-3">
+                      <button onClick={seedInitialHomeConfig} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-200 transition-all">Бастапқы баптаулар</button>
+                      <button 
+                        onClick={handleSaveHomeConfig}
+                        disabled={isSaving}
+                        className="bg-indigo-600 text-white px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all disabled:opacity-50"
+                      >
+                        {isSaving ? 'Сақталуда...' : 'Сақтау'}
+                      </button>
+                   </div>
+                </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-6">
@@ -451,7 +691,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           {activeSubTab === 'content' && (
             <div className="animate-in fade-in">
                {!selectedSubject ? (
-                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                 <div className="space-y-6">
+                   <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-black font-outfit">Оқу мазмұнын басқару</h3>
+                      <button onClick={seedInitialContent} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-200 transition-all">Бастапқы мазмұнды жүктеу</button>
+                   </div>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                    {allowedSubjects.map((sub: Subject) => (
                      <button key={sub.id} onClick={() => setSelectedSubject(sub)} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm flex flex-col items-center gap-4 hover:border-indigo-500 transition-all text-center group">
                         <div className={`${sub.color} w-12 h-12 rounded-xl flex items-center justify-center text-white text-xl shadow-lg group-hover:scale-105 transition-transform`}><i className={`fas ${sub.icon}`}></i></div>
@@ -460,6 +705,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                      </button>
                    ))}
                  </div>
+                </div>
                ) : !selectedModule ? (
                  <div className="space-y-6">
                     <div className="flex justify-between items-center">
@@ -538,12 +784,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm space-y-6 animate-in slide-in-from-bottom">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-black font-outfit">Жаңалықтар лентасы</h3>
-                <button 
-                  onClick={() => { setEditingNews({}); setShowNewsModal(true); }}
-                  className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg"
-                >
-                  + Жаңалық
-                </button>
+                <div className="flex gap-3">
+                  {news.length === 0 && (
+                    <button onClick={seedInitialNews} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-200 transition-all">Бастапқы жаңалықтар</button>
+                  )}
+                  <button 
+                    onClick={() => { setEditingNews({}); setShowNewsModal(true); }}
+                    className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg"
+                  >
+                    + Жаңалық
+                  </button>
+                </div>
               </div>
               
               {isNewsLoading ? (
@@ -583,6 +834,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                <div className="flex justify-between items-center mb-6">
                   <h3 className="text-lg font-black font-outfit">Оқушылар мониторингі</h3>
                   <div className="flex gap-3">
+                    {students.length <= 2 && (
+                      <button onClick={seedInitialUsers} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-200 transition-all">Бастапқы оқушылар</button>
+                    )}
                     <input type="text" placeholder="Іздеу..." className="px-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 ring-indigo-500" />
                     <button onClick={() => { setEditingStudent({}); setShowStudentModal(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg">+ Оқушы қосу</button>
                   </div>
@@ -613,7 +867,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                              <span className="font-black text-emerald-600 text-xs">{s.points} ★</span>
                           </td>
                           <td className="p-4 text-right">
-                            <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">{s.subscription}</span>
+                            <div className="flex justify-end gap-2">
+                              <button onClick={() => { setEditingStudent(s); setShowStudentModal(true); }} className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all"><i className="fas fa-edit text-[10px]"></i></button>
+                              <button onClick={() => handleDeleteStudent(s.email)} className="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"><i className="fas fa-trash text-[10px]"></i></button>
+                              <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest self-center ml-2">{s.subscription}</span>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -627,7 +885,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm animate-in zoom-in space-y-6">
                <div className="flex justify-between items-center">
                   <h3 className="text-lg font-black font-outfit">Қызметкерлер</h3>
-                  <button onClick={() => { setEditingStaff({}); setShowStaffModal(true); }} className="bg-slate-900 dark:bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase">+ Қызметкер</button>
+                  <div className="flex gap-3">
+                    {staffList.length <= 2 && (
+                      <button onClick={seedInitialStaff} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-200 transition-all">Бастапқы қызметкерлер</button>
+                    )}
+                    <button onClick={() => { setEditingStaff({}); setShowStaffModal(true); }} className="bg-slate-900 dark:bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase">+ Қызметкер</button>
+                  </div>
                </div>
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {staffList.map(staff => (
@@ -639,7 +902,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             <p className="text-[8px] text-gray-400 uppercase tracking-widest">{staff.role}</p>
                           </div>
                        </div>
-                       <button className="text-red-400 hover:text-red-600 transition-colors"><i className="fas fa-trash text-xs"></i></button>
+                                               <div className="flex gap-2">
+                           <button onClick={() => { setEditingStaff(staff); setShowStaffModal(true); }} className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all"><i className="fas fa-edit text-[10px]"></i></button>
+                           <button onClick={() => handleDeleteStaff(staff.email)} className="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"><i className="fas fa-trash text-[10px]"></i></button>
+                        </div>
                     </div>
                   ))}
                </div>
@@ -651,7 +917,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm space-y-6">
                  <div className="flex justify-between items-center">
                     <h3 className="text-lg font-black font-outfit">ЖОО базасы</h3>
-                    <button onClick={() => { setEditingUni({}); setShowUniModal(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg">+ ЖОО қосу</button>
+                    <div className="flex gap-3">
+                       {universities.length === 0 && (
+                         <button onClick={seedInitialData} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-200 transition-all">Бастапқы деректерді жүктеу</button>
+                       )}
+                       <button onClick={() => { setEditingUni({}); setShowUniModal(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg">+ ЖОО қосу</button>
+                    </div>
                  </div>
 
                  {isUniLoading ? (
