@@ -125,111 +125,62 @@ const LessonContent: React.FC<LessonContentProps> = ({ lesson, user, onComplete,
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col animate-in fade-in lg:pr-24">
+    <div className="fixed inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col animate-in fade-in">
       <div className="w-full h-full flex flex-col overflow-hidden">
         
-        {/* Compact Header */}
-        <header className="px-4 py-3 md:px-8 md:py-5 border-b border-gray-100 dark:border-slate-800 flex flex-col gap-4 bg-white dark:bg-slate-900 shrink-0">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <button onClick={onClose} className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:bg-red-500 hover:text-white transition-all border border-gray-100 dark:border-slate-700">
-                <i className="fas fa-times text-sm"></i>
-              </button>
-              <div>
-                <h3 className="text-sm md:text-xl font-black text-slate-800 dark:text-white font-outfit leading-tight">{lesson.title}</h3>
-                <div className="flex items-center gap-3 mt-1">
-                  <span className="text-[9px] md:text-[10px] text-slate-400 font-black uppercase tracking-widest">40–60 минут</span>
-                  <div className="w-1 h-1 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
-                  <span className="text-[9px] md:text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-1">
-                    <i className="fas fa-coins"></i> 10 балл
-                  </span>
-                </div>
+        {/* Ultra Compact Header */}
+        <header className="px-4 py-2 md:px-6 md:py-3 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 shrink-0">
+          <div className="flex items-center gap-3">
+            <button onClick={onClose} className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:bg-red-500 hover:text-white transition-all border border-gray-100 dark:border-slate-700">
+              <i className="fas fa-times text-xs"></i>
+            </button>
+            <div>
+              <h3 className="text-[10px] md:text-xs font-black text-slate-800 dark:text-white font-outfit leading-tight uppercase tracking-tight">{lesson.title}</h3>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[7px] md:text-[8px] text-slate-400 font-black uppercase tracking-widest">40–60 мин</span>
+                <div className="w-1 h-1 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+                <span className="text-[7px] md:text-[8px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-1">
+                  <i className="fas fa-coins"></i> 10 балл
+                </span>
               </div>
-            </div>
-
-            <div className="hidden lg:flex items-center gap-3">
-              {quickTools.map(tool => (
-                <button
-                  key={tool.id}
-                  onClick={() => onOpenView?.(tool.id as AppView)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 hover:border-indigo-500 transition-all group"
-                >
-                  <i className={`fas ${tool.icon} ${tool.color} text-xs group-hover:scale-110 transition-transform`}></i>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{tool.label}</span>
-                </button>
-              ))}
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex bg-gray-50 dark:bg-slate-800/50 p-1.5 rounded-2xl border border-gray-100 dark:border-slate-800 overflow-x-auto no-scrollbar w-full">
-              {tabs.map((tab, idx) => {
-                const isLocked = idx > 0 && !completedTabs.includes(tabs[idx-1].id);
-                const isActive = activeTab === tab.id;
-                const isCompleted = completedTabs.includes(tab.id);
-
-                return (
-                  <button
-                    key={tab.id}
-                    disabled={isLocked}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex-1 min-w-[80px] md:min-w-[120px] py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 relative ${
-                      isActive 
-                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm border border-gray-100 dark:border-slate-600' 
-                        : isLocked 
-                          ? 'text-slate-300 cursor-not-allowed opacity-40'
-                          : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-                    }`}
-                  >
-                    <i className={`fas ${isLocked ? 'fa-lock' : isCompleted ? 'fa-check-circle text-emerald-500' : tab.icon} text-xs`}></i>
-                    <span>{tab.label}</span>
-                    {isActive && (
-                      <motion.div layoutId="tab-indicator" className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-600 rounded-full" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex items-center gap-2">
+            {quickTools.map(tool => (
+              <button
+                key={tool.id}
+                onClick={() => onOpenView?.(tool.id as AppView)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-100 dark:border-slate-700 hover:border-indigo-500 transition-all group"
+              >
+                <i className={`fas ${tool.icon} ${tool.color} text-[10px]`}></i>
+                <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hidden sm:inline">{tool.label}</span>
+              </button>
+            ))}
           </div>
         </header>
 
         {/* Content Area */}
         <div className={`flex-1 overflow-y-auto no-scrollbar bg-[#F8FAFC] dark:bg-slate-950 ${activeTab === 'video' ? 'p-0' : 'p-4 md:p-8'}`}>
            {activeTab === 'video' && (
-             <div className="h-full flex flex-col animate-in fade-in">
-                <div className="flex-1 bg-black relative">
-                   <iframe 
-                     className="absolute inset-0 w-full h-full" 
-                     src={lesson.videoUrl} 
-                     title="Video" 
-                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                     allowFullScreen
-                   ></iframe>
-                </div>
-                <div className="bg-white dark:bg-slate-900 p-6 border-t border-gray-100 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-6">
-                   <div className="flex items-center gap-5">
-                     <div className="w-14 h-14 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 text-xl shadow-sm">
-                       <i className="fas fa-play"></i>
-                     </div>
-                     <div>
-                       <h4 className="text-lg font-black text-slate-800 dark:text-white font-outfit">Бейнесабақты қарау</h4>
-                       <p className="text-sm text-slate-500 font-medium">Келесі бөлімге өту үшін видеоны соңына дейін көріңіз.</p>
-                     </div>
+             <div className="h-full flex flex-col animate-in fade-in bg-slate-50 dark:bg-slate-950">
+                <div className="flex-1 flex items-center justify-center p-1 md:p-4">
+                   <div className="w-full max-w-4xl bg-white dark:bg-slate-900 p-3 md:p-6 rounded-[32px] md:rounded-[40px] shadow-sm border border-gray-100 dark:border-slate-800 space-y-3">
+                      <div className="flex items-center gap-2 px-1">
+                        <i className="fas fa-video text-indigo-600 text-base"></i>
+                        <h4 className="text-[10px] font-black text-indigo-900 dark:text-indigo-100 uppercase tracking-[0.2em]">Бейнесабақты қарау</h4>
+                      </div>
+                      
+                      <div className="w-full aspect-video bg-black rounded-[20px] md:rounded-[28px] overflow-hidden shadow-2xl relative border border-gray-100 dark:border-slate-800">
+                        <iframe 
+                          className="absolute inset-0 w-full h-full" 
+                          src={lesson.videoUrl} 
+                          title="Video" 
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                        ></iframe>
+                      </div>
                    </div>
-                   
-                   {!videoWatched && !completedTabs.includes('video') ? (
-                     <button 
-                       onClick={handleVideoComplete}
-                       className="w-full md:w-auto bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95 flex items-center justify-center gap-3"
-                     >
-                       Видеоны аяқтадым <i className="fas fa-check-circle"></i>
-                     </button>
-                   ) : (
-                     <div className="flex items-center gap-3 px-6 py-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl border border-emerald-100 dark:border-emerald-800/50">
-                        <i className="fas fa-check-circle text-emerald-500"></i>
-                        <span className="text-xs font-black text-emerald-600 uppercase tracking-widest">Видео қабылданды</span>
-                     </div>
-                   )}
                 </div>
              </div>
            )}
@@ -292,12 +243,16 @@ const LessonContent: React.FC<LessonContentProps> = ({ lesson, user, onComplete,
                 ) : (
                   <div className="bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[40px] border border-gray-100 dark:border-slate-800 shadow-sm space-y-8">
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-4 py-1.5 rounded-full uppercase tracking-widest">
-                        Сұрақ {quizIndex + 1} / {reinforcement.length}
+                      <div className="flex items-center gap-2">
+                        <i className="fas fa-vial text-indigo-500 text-[10px]"></i>
+                        <h5 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">Бекіту тапсырмасы</h5>
+                      </div>
+                      <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full uppercase tracking-widest">
+                        {quizIndex + 1} / {reinforcement.length}
                       </span>
                     </div>
                     
-                    <h4 className="text-xl md:text-2xl font-black font-outfit text-slate-800 dark:text-white leading-tight">
+                    <h4 className="text-lg font-black font-outfit text-slate-800 dark:text-white leading-tight">
                       {reinforcement[quizIndex].question}
                     </h4>
 
@@ -381,7 +336,10 @@ const LessonContent: React.FC<LessonContentProps> = ({ lesson, user, onComplete,
                 ) : (
                   <div className="space-y-6">
                     <div className="bg-white dark:bg-slate-900 p-8 rounded-[40px] border border-gray-100 dark:border-slate-800 shadow-sm">
-                      <h4 className="text-xl font-black font-outfit text-slate-800 dark:text-white mb-6">Үй тапсырмасы</h4>
+                      <div className="flex items-center gap-2 mb-6">
+                        <i className="fas fa-tasks text-indigo-500 text-[10px]"></i>
+                        <h5 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400">Үй тапсырмасы</h5>
+                      </div>
                       <div className="space-y-8">
                         {homework.map((hw, idx) => (
                           <div key={idx} className="space-y-4">
@@ -440,40 +398,38 @@ const LessonContent: React.FC<LessonContentProps> = ({ lesson, user, onComplete,
            )}
 
            {activeTab === 'correction' && (
-             <div className="max-w-5xl mx-auto py-10 space-y-10 animate-in fade-in">
-                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-8 rounded-[40px] border border-emerald-100 dark:border-emerald-800 flex items-center gap-6">
-                   <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-emerald-600 text-2xl shadow-sm">
-                     <i className="fas fa-history"></i>
+             <div className="max-w-4xl mx-auto py-10 space-y-8 animate-in fade-in">
+                <div className="bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[45px] border border-gray-100 dark:border-slate-800 shadow-sm space-y-8">
+                   <div className="flex items-center gap-3 px-2">
+                      <i className="fas fa-video text-indigo-600 text-lg"></i>
+                      <h4 className="text-[11px] font-black text-indigo-900 dark:text-indigo-100 uppercase tracking-[0.2em]">Бейне талдау</h4>
                    </div>
-                   <div>
-                     <h4 className="text-2xl font-black text-slate-800 dark:text-white font-outfit">Қатемен жұмыс</h4>
-                     <p className="text-sm text-slate-500 font-medium">Үй жұмысы мен тест есептерінің толық талдауын қараңыз.</p>
+                   
+                   <div className="aspect-video bg-black rounded-[32px] overflow-hidden shadow-2xl relative border border-gray-100 dark:border-slate-800">
+                      <iframe 
+                        className="absolute inset-0 w-full h-full" 
+                        src={lesson.analysisVideoUrl} 
+                        title="Analysis" 
+                        allowFullScreen
+                      ></iframe>
                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="bg-white dark:bg-slate-900 p-8 rounded-[40px] border border-gray-100 dark:border-slate-800 shadow-sm space-y-6">
-                    <div className="flex items-center gap-3">
-                      <i className="fas fa-video text-indigo-500 text-sm"></i>
-                      <h5 className="font-black text-sm uppercase tracking-widest text-slate-700 dark:text-slate-200">Бейне талдау</h5>
-                    </div>
-                    <div className="aspect-video bg-black rounded-3xl overflow-hidden shadow-lg">
-                      <iframe className="w-full h-full" src={lesson.analysisVideoUrl} title="Analysis" allowFullScreen></iframe>
-                    </div>
-                  </div>
-
-                  <div className="bg-white dark:bg-slate-900 p-8 rounded-[40px] border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center text-center space-y-6">
-                    <div className="w-24 h-24 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-[35px] flex items-center justify-center text-4xl">
-                      <i className="fas fa-file-invoice"></i>
-                    </div>
-                    <div>
-                      <h5 className="font-black text-xl text-slate-800 dark:text-slate-200 font-outfit">ПДФ Шешімдер</h5>
-                      <p className="text-xs text-slate-400 mt-2">Әр есептің қадамдық жазбаша шешімі</p>
-                    </div>
-                    <a href={lesson.pdfSolutionUrl} target="_blank" rel="noreferrer" className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:scale-[1.02] transition-transform">
-                      Шешімді ашу <i className="fas fa-external-link-alt ml-2"></i>
-                    </a>
-                  </div>
+                <div className="bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[45px] border border-gray-100 dark:border-slate-800 shadow-sm space-y-8">
+                   <div className="flex items-center gap-3 px-2">
+                      <i className="fas fa-file-invoice text-emerald-600 text-lg"></i>
+                      <h4 className="text-[11px] font-black text-emerald-900 dark:text-emerald-100 uppercase tracking-[0.2em]">ПДФ Шешімдер</h4>
+                   </div>
+                   
+                   <div className="flex flex-col items-center justify-center text-center py-6 space-y-6">
+                      <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-[30px] flex items-center justify-center text-3xl">
+                        <i className="fas fa-file-pdf"></i>
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium max-w-xs">Әр есептің қадамдық жазбаша шешімі мен түсіндірмесі.</p>
+                      <a href={lesson.pdfSolutionUrl} target="_blank" rel="noreferrer" className="w-full max-w-sm bg-emerald-600 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:scale-[1.02] transition-transform">
+                        Шешімді ашу <i className="fas fa-external-link-alt ml-2"></i>
+                      </a>
+                   </div>
                 </div>
 
                 {reinforcement.length > 0 && (
@@ -518,25 +474,60 @@ const LessonContent: React.FC<LessonContentProps> = ({ lesson, user, onComplete,
            )}
         </div>
 
-        {/* Sticky Footer */}
-        <footer className="px-6 py-5 md:px-10 md:py-6 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-between items-center shrink-0 z-10 shadow-[0_-4px_30px_rgba(0,0,0,0.04)]">
-          <div className="hidden sm:flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full border-2 border-gray-100 dark:border-slate-800 flex items-center justify-center text-[10px] font-black text-slate-400">
-              {currentTabIndex + 1}/{tabs.length}
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Келесі бөлім</span>
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                {isLastTab ? 'Сабақты толық аяқтау' : tabs[currentTabIndex + 1].label}
-              </span>
-            </div>
+        {/* Sticky Footer with Tabs */}
+        <footer className="px-4 py-3 md:px-6 md:py-4 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 z-10 shadow-[0_-4px_30px_rgba(0,0,0,0.04)]">
+          <div className="flex bg-gray-50 dark:bg-slate-800/50 p-1 rounded-xl border border-gray-100 dark:border-slate-800 overflow-x-auto no-scrollbar w-full sm:w-auto">
+            {tabs.map((tab, idx) => {
+              const isLocked = idx > 0 && !completedTabs.includes(tabs[idx-1].id);
+              const isActive = activeTab === tab.id;
+              const isCompleted = completedTabs.includes(tab.id);
+
+              return (
+                <button
+                  key={tab.id}
+                  disabled={isLocked}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex-1 min-w-[70px] md:min-w-[100px] py-2 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 relative ${
+                    isActive 
+                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm border border-gray-100 dark:border-slate-600' 
+                      : isLocked 
+                        ? 'text-slate-300 cursor-not-allowed opacity-40'
+                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <i className={`fas ${isLocked ? 'fa-lock' : isCompleted ? 'fa-check-circle text-emerald-500' : tab.icon} text-[10px]`}></i>
+                  <span className="hidden xs:inline">{tab.label}</span>
+                  {isActive && (
+                    <motion.div layoutId="tab-indicator" className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-600 rounded-full" />
+                  )}
+                </button>
+              );
+            })}
           </div>
           
-          <div className="flex items-center gap-4 w-full sm:w-auto">
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+            {activeTab === 'video' && (
+              <div className="mr-1">
+                {!videoWatched && !completedTabs.includes('video') ? (
+                  <button 
+                    onClick={handleVideoComplete}
+                    className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 px-3 py-2 rounded-lg font-black text-[8px] uppercase tracking-widest border border-indigo-100 dark:border-indigo-800/50 hover:bg-indigo-100 transition-all flex items-center gap-1.5"
+                  >
+                    Видеоны көрдім <i className="fas fa-check-circle text-[9px]"></i>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-100 dark:border-emerald-800/50">
+                    <i className="fas fa-check-circle text-emerald-500 text-[9px]"></i>
+                    <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Көрілді</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {currentTabIndex > 0 && (
               <button 
                 onClick={() => setActiveTab(tabs[currentTabIndex - 1].id as any)}
-                className="px-6 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest text-slate-400 hover:text-slate-600 transition-all"
+                className="px-3 py-2 rounded-lg font-black uppercase text-[8px] tracking-widest text-slate-400 hover:text-slate-600 transition-all"
               >
                 Артқа
               </button>
@@ -544,14 +535,14 @@ const LessonContent: React.FC<LessonContentProps> = ({ lesson, user, onComplete,
             <button 
               disabled={!canGoNext}
               onClick={handleNext}
-              className={`flex-1 sm:flex-none px-12 py-4 rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest transition-all active:scale-95 flex items-center justify-center gap-3 group shadow-xl ${
+              className={`px-6 py-2.5 rounded-xl font-black uppercase text-[9px] tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2 group shadow-lg ${
                 !canGoNext 
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none' 
                   : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-100 dark:shadow-none'
               }`}
             >
-              {isLastTab ? 'Сабақты аяқтау' : 'Келесі бөлім'}
-              <i className={`fas ${isLastTab ? 'fa-check-circle' : 'fa-arrow-right'} group-hover:translate-x-1 transition-transform`}></i>
+              {isLastTab ? 'Аяқтау' : 'Келесі'}
+              <i className={`fas ${isLastTab ? 'fa-check-circle' : 'fa-arrow-right'} text-[9px] group-hover:translate-x-1 transition-transform`}></i>
             </button>
           </div>
         </footer>

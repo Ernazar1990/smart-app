@@ -29,7 +29,8 @@ const ScannerView: React.FC<ScannerViewProps> = ({ onBack }) => {
     setAnalysis(null);
     try {
       // Create a fresh instance of GoogleGenAI before the API call.
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+      const ai = new GoogleGenAI({ apiKey: apiKey as string });
       const base64Data = base64.split(',')[1];
       
       const response = await ai.models.generateContent({

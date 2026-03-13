@@ -27,9 +27,10 @@ interface ModuleListProps {
 const ModuleList: React.FC<ModuleListProps> = ({ user, onSelectLesson, modules, subjects, selectedSubjectId, onSelectSubject }) => {
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
 
-  const mySubjects = subjects.filter(sub => 
-    !sub.isElective || user.chosenElectives.includes(sub.id)
-  );
+  const mySubjects = subjects.filter(sub => {
+    // Show mandatory subjects and only the chosen elective subjects
+    return !sub.isElective || user.chosenElectives.includes(sub.id);
+  });
 
   const toggleModule = (modId: string) => {
     setExpandedModule(expandedModule === modId ? null : modId);
@@ -75,7 +76,10 @@ const ModuleList: React.FC<ModuleListProps> = ({ user, onSelectLesson, modules, 
   const progressPercent = totalLessons > 0 ? Math.round((completedLessonsCount / totalLessons) * 100) : 0;
 
   const currentSubject = subjects.find(s => s.id === selectedSubjectId);
-  const isSubjectChosen = currentSubject && (!currentSubject.isElective || user.chosenElectives.includes(currentSubject.id));
+  const isSubjectChosen = currentSubject && (
+    !currentSubject.isElective || 
+    (user.chosenElectives.includes(currentSubject.id) && (user.subscription === 'Free' || (user.activeSubjects || []).includes(currentSubject.id)))
+  );
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in">
@@ -185,46 +189,97 @@ const ModuleList: React.FC<ModuleListProps> = ({ user, onSelectLesson, modules, 
                     {module.lessons.length === 0 ? (
                       <p className="p-4 text-center text-[9px] font-black text-slate-400 uppercase">Сабақтар әлі қосылмаған</p>
                     ) : (
-                      module.lessons.map((lesson) => {
-                        const lDone = user.completedLessons.includes(lesson.id);
-                        return (
+                      <div className="space-y-2">
+                        {module.lessons.map((lesson) => {
+                          const lDone = user.completedLessons.includes(lesson.id);
+                          return (
+                            <button
+                              key={lesson.id}
+                              onClick={() => {
+                                if (!isSubjectChosen && !lesson.isFree) {
+                                  alert('Бұл сабақты көру үшін пәнді таңдауыңыз қажет немесе Premium жазылым алыңыз.');
+                                  return;
+                                }
+                                onSelectLesson(lesson);
+                              }}
+                              className={`w-full p-4 bg-slate-50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-900 rounded-2xl border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/30 transition-all flex items-center gap-4 group relative ${
+                                !isSubjectChosen && !lesson.isFree ? 'opacity-60 grayscale-[0.5]' : ''
+                              }`}
+                            >
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all ${
+                                lDone ? 'bg-emerald-100 text-emerald-600' : 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm group-hover:scale-110'
+                              }`}>
+                                {lDone ? <CheckCircle size={18} /> : <Play size={16} className="fill-current" />}
+                              </div>
+                              <div className="flex-1 text-left">
+                                <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs leading-tight mb-1">{lesson.title}</h5>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-[8px] font-medium text-slate-400 flex items-center gap-1">
+                                    <Clock size={10} /> 45 мин
+                                  </span>
+                                  <span className="text-[8px] font-black text-amber-500 flex items-center gap-1">
+                                    <Coins size={10} /> 10 балл
+                                  </span>
+                                </div>
+                              </div>
+                              {!lesson.isFree && !lDone && (
+                                <div className="text-slate-400">
+                                  <Lock size={14} />
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+
+                        {/* Chapter Test Button */}
+                        <button
+                          onClick={() => {
+                            if (user.subscription === 'Free') {
+                              alert('Тараулық тест тек Premium оқушыларға қолжетімді.');
+                              return;
+                            }
+                            // Trigger test view for this chapter
+                            onSelectLesson({ id: `test-chapter-${module.id}`, title: `${module.title}: Тараулық тест`, isTest: true, testType: 'chapter', subjectId: selectedSubjectId });
+                          }}
+                          className="w-full p-5 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-2xl shadow-lg shadow-indigo-200 dark:shadow-none flex items-center justify-between group hover:scale-[1.02] active:scale-95 transition-all mt-4"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                              <i className="fas fa-file-signature text-sm"></i>
+                            </div>
+                            <div className="text-left">
+                              <h5 className="font-black text-xs uppercase tracking-wider">Тараулық тест</h5>
+                              <p className="text-[9px] opacity-70 font-bold uppercase tracking-widest">Біліміңді тексер • 20 сұрақ</p>
+                            </div>
+                          </div>
+                          <ChevronRight size={18} className="opacity-50 group-hover:translate-x-1 transition-transform" />
+                        </button>
+
+                        {/* Monthly Test Button (Every 4 weeks) */}
+                        {module.weekNumber % 4 === 0 && (
                           <button
-                            key={lesson.id}
                             onClick={() => {
-                              if (!isSubjectChosen && !lesson.isFree) {
-                                alert('Бұл сабақты көру үшін пәнді таңдауыңыз қажет немесе Premium жазылым алыңыз.');
+                              if (user.subscription === 'Free') {
+                                alert('Айлық тест тек Premium оқушыларға қолжетімді.');
                                 return;
                               }
-                              onSelectLesson(lesson);
+                              onSelectLesson({ id: `test-monthly-${module.weekNumber}`, title: `${Math.floor(module.weekNumber/4)}-айлық қорытынды тест`, isTest: true, testType: 'monthly', subjectId: selectedSubjectId });
                             }}
-                            className={`w-full p-4 bg-slate-50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-900 rounded-2xl border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/30 transition-all flex items-center gap-4 group relative ${
-                              !isSubjectChosen && !lesson.isFree ? 'opacity-60 grayscale-[0.5]' : ''
-                            }`}
+                            className="w-full p-5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl shadow-lg shadow-emerald-200 dark:shadow-none flex items-center justify-between group hover:scale-[1.02] active:scale-95 transition-all mt-2"
                           >
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all ${
-                              lDone ? 'bg-emerald-100 text-emerald-600' : 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm group-hover:scale-110'
-                            }`}>
-                              {lDone ? <CheckCircle size={18} /> : <Play size={16} className="fill-current" />}
-                            </div>
-                            <div className="flex-1 text-left">
-                              <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs leading-tight mb-1">{lesson.title}</h5>
-                              <div className="flex items-center gap-3">
-                                <span className="text-[8px] font-medium text-slate-400 flex items-center gap-1">
-                                  <Clock size={10} /> 45 мин
-                                </span>
-                                <span className="text-[8px] font-black text-amber-500 flex items-center gap-1">
-                                  <Coins size={10} /> 10 балл
-                                </span>
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                                <i className="fas fa-calendar-check text-sm"></i>
+                              </div>
+                              <div className="text-left">
+                                <h5 className="font-black text-xs uppercase tracking-wider">Айлық тест</h5>
+                                <p className="text-[9px] opacity-70 font-bold uppercase tracking-widest">Айлық қорытынды • 40 сұрақ</p>
                               </div>
                             </div>
-                            {!lesson.isFree && !lDone && (
-                              <div className="text-slate-400">
-                                <Lock size={14} />
-                              </div>
-                            )}
+                            <ChevronRight size={18} className="opacity-50 group-hover:translate-x-1 transition-transform" />
                           </button>
-                        );
-                      })
+                        )}
+                      </div>
                     )}
                   </div>
                 )}

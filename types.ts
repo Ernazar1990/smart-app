@@ -1,5 +1,5 @@
 
-export type AppView = 'auth' | 'home' | 'subjects' | 'module-list' | 'lesson-detail' | 'test' | 'marathon' | 'rating' | 'profile' | 'subscription' | 'periodic-table' | 'ai-tutor' | 'news-detail' | 'uni-list' | 'onboarding' | 'scanner' | 'formulas' | 'admin' | 'admin-content' | 'admin-news' | 'admin-users' | 'admin-staff' | 'admin-home' | 'admin-unis' | 'admin-ai' | 'subject-selection' | 'solubility-table' | 'reactivity-series' | 'multiplication-table' | 'glossary' | 'ai-tools-hub' | 'reaction-balancer' | 'flashcards' | 'arena' | 'ai-study-plan' | 'career-advisor' | 'roadmap' | 'tournament';
+export type AppView = 'auth' | 'home' | 'subjects' | 'module-list' | 'lesson-detail' | 'test' | 'marathon' | 'rating' | 'profile' | 'subscription' | 'periodic-table' | 'ai-tutor' | 'news-detail' | 'uni-list' | 'onboarding' | 'scanner' | 'formulas' | 'admin' | 'admin-content' | 'admin-news' | 'admin-users' | 'admin-staff' | 'admin-home' | 'admin-unis' | 'admin-ai' | 'admin-subscription' | 'subject-selection' | 'solubility-table' | 'reactivity-series' | 'multiplication-table' | 'glossary' | 'ai-tools-hub' | 'reaction-balancer' | 'flashcards' | 'arena' | 'ai-study-plan' | 'career-advisor' | 'roadmap' | 'tournament';
 
 export type UserRole = 'student' | 'teacher' | 'super-admin';
 
@@ -32,6 +32,10 @@ export interface UserProgress {
   totalSolved?: number;
   correctAnswers?: number;
   subscription: string;
+  subscriptionCode?: string;
+  activationCode?: string;
+  subscriptionExpiresAt?: string;
+  activeSubjects?: string[];
   chosenElectives: string[];
   startDate?: string;
   isAdmin?: boolean;
@@ -150,4 +154,24 @@ export interface NewsItem {
   date: string;
   image?: string;
   created_at?: string;
+}
+
+export interface SubscriptionBundle {
+  id: string;
+  name: string;
+  priceMonth: string;
+  priceYear: string;
+  oldPriceMonth?: string;
+  oldPriceYear?: string;
+  desc: string;
+  color: string;
+  badge?: string;
+}
+
+export interface SubscriptionConfig {
+  bundles: SubscriptionBundle[];
+  qrCodeUrl: string;
+  kaspiNumber: string;
+  kaspiName: string;
+  whatsappNumber: string;
 }

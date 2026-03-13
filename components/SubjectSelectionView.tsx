@@ -54,38 +54,57 @@ const SubjectSelectionView: React.FC<SubjectSelectionViewProps> = ({ user, onUpd
   };
 
   return (
-    <div className="space-y-8 animate-in slide-in-from-bottom duration-500 pb-32">
-      <header className="text-center space-y-3 px-4">
-        <h2 className="text-3xl font-black text-gray-900 tracking-tight">Болашақ мамандығың 🎯</h2>
-        <p className="text-gray-500 text-sm max-w-sm mx-auto leading-relaxed">ҰБТ-да тапсыратын бағытыңды таңда. Әр комбинация белгілі бір мамандықтарға жол ашады.</p>
+    <div className="space-y-8 animate-in slide-in-from-bottom duration-700 pb-32 relative overflow-hidden">
+      {/* Decorative Background Glows */}
+      <div className="absolute -top-20 -left-20 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -z-10"></div>
+      <div className="absolute top-40 -right-20 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl -z-10"></div>
+
+      <header className="text-center space-y-4 px-6 pt-4">
+        <div className="inline-block px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[9px] font-black uppercase tracking-[0.2em] mb-2">
+          ҰБТ 2026 • ТАҢДАУ
+        </div>
+        <h2 className="text-4xl font-black text-gray-900 tracking-tight leading-none">Болашақ мамандығың 🎯</h2>
+        <p className="text-gray-500 text-sm max-w-[280px] mx-auto leading-relaxed font-medium">ҰБТ-да тапсыратын бағытыңды таңда. Әр комбинация белгілі бір мамандықтарға жол ашады.</p>
       </header>
 
       {/* Path Choice: Regular vs Creative */}
-      <div className="grid grid-cols-2 gap-4 px-2">
+      <div className="grid grid-cols-2 gap-5 px-4">
         <button 
           onClick={() => setIsCreative(false)}
-          className={`p-6 rounded-[35px] border-2 flex flex-col items-center gap-3 transition-all relative group ${
-            !isCreative ? 'border-emerald-500 bg-emerald-50 shadow-xl shadow-emerald-100' : 'border-gray-100 bg-white hover:border-emerald-200'
+          className={`p-7 rounded-[40px] border-2 flex flex-col items-center gap-4 transition-all duration-500 relative group overflow-hidden ${
+            !isCreative 
+              ? 'border-emerald-500 bg-white shadow-2xl shadow-emerald-100 scale-[1.02]' 
+              : 'border-gray-100 bg-gray-50/50 hover:border-emerald-200'
           }`}
         >
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110 ${!isCreative ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+          <div className={`w-16 h-16 rounded-[24px] flex items-center justify-center text-3xl transition-all duration-500 relative z-10 ${!isCreative ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-white text-gray-300 shadow-sm'}`}>
             <i className="fas fa-graduation-cap"></i>
           </div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-gray-800">Стандарт бағыт</span>
-          {!isCreative && <div className="absolute top-3 right-3 w-2 h-2 bg-emerald-500 rounded-full animate-ping"></div>}
+          <div className="text-center relative z-10">
+            <span className={`text-[10px] font-black uppercase tracking-widest block ${!isCreative ? 'text-emerald-700' : 'text-gray-400'}`}>Стандарт</span>
+            <span className={`text-[8px] font-bold uppercase tracking-tighter block opacity-60 ${!isCreative ? 'text-emerald-500' : 'text-gray-400'}`}>5 пән</span>
+          </div>
+          {!isCreative && <div className="absolute top-4 right-4 w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>}
+          {!isCreative && <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-emerald-500"></div>}
         </button>
 
         <button 
           onClick={selectCreative}
-          className={`p-6 rounded-[35px] border-2 flex flex-col items-center gap-3 transition-all relative group ${
-            isCreative ? 'border-indigo-500 bg-indigo-50 shadow-xl shadow-indigo-100' : 'border-gray-100 bg-white hover:border-indigo-200'
+          className={`p-7 rounded-[40px] border-2 flex flex-col items-center gap-4 transition-all duration-500 relative group overflow-hidden ${
+            isCreative 
+              ? 'border-indigo-500 bg-white shadow-2xl shadow-indigo-100 scale-[1.02]' 
+              : 'border-gray-100 bg-gray-50/50 hover:border-indigo-200'
           }`}
         >
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110 ${isCreative ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+          <div className={`w-16 h-16 rounded-[24px] flex items-center justify-center text-3xl transition-all duration-500 relative z-10 ${isCreative ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white text-gray-300 shadow-sm'}`}>
             <i className="fas fa-palette"></i>
           </div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-gray-800">Шығармашылық</span>
-          {isCreative && <div className="absolute top-3 right-3 w-2 h-2 bg-indigo-500 rounded-full animate-ping"></div>}
+          <div className="text-center relative z-10">
+            <span className={`text-[10px] font-black uppercase tracking-widest block ${isCreative ? 'text-indigo-700' : 'text-gray-400'}`}>Шығармашылық</span>
+            <span className={`text-[8px] font-bold uppercase tracking-tighter block opacity-60 ${isCreative ? 'text-indigo-500' : 'text-gray-400'}`}>3 пән</span>
+          </div>
+          {isCreative && <div className="absolute top-4 right-4 w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>}
+          {isCreative && <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-indigo-500"></div>}
         </button>
       </div>
 
@@ -106,25 +125,38 @@ const SubjectSelectionView: React.FC<SubjectSelectionViewProps> = ({ user, onUpd
                   <button
                     key={combo.id}
                     onClick={() => selectCombination(combo.subjects)}
-                    className={`w-full p-6 rounded-[40px] border-2 text-left transition-all relative overflow-hidden group ${
-                      isSelected ? 'border-emerald-500 bg-emerald-50 shadow-xl shadow-emerald-100' : 'border-gray-50 bg-white hover:border-emerald-100'
+                    className={`w-full p-6 rounded-[40px] border-2 text-left transition-all duration-500 relative overflow-hidden group ${
+                      isSelected 
+                        ? 'border-emerald-500 bg-emerald-50/50 shadow-2xl shadow-emerald-100 scale-[1.02]' 
+                        : 'border-gray-50 bg-white hover:border-emerald-100 hover:shadow-lg'
                     }`}
                   >
+                    {/* Decorative Background Element */}
+                    <div className={`absolute -right-10 -bottom-10 w-40 h-40 bg-gradient-to-br ${combo.color} opacity-[0.03] rounded-full blur-3xl group-hover:opacity-[0.08] transition-opacity`}></div>
+                    
                     <div className="relative z-10 flex items-center gap-6">
-                      <div className={`w-16 h-16 bg-gradient-to-br ${combo.color} rounded-[24px] flex items-center justify-center text-white text-2xl shadow-lg group-hover:scale-105 transition-transform`}>
+                      <div className={`w-20 h-20 bg-gradient-to-br ${combo.color} rounded-[28px] flex items-center justify-center text-white text-3xl shadow-xl group-hover:rotate-6 transition-all duration-500`}>
                         <i className={`fas ${combo.icon}`}></i>
                       </div>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-black text-gray-900 text-lg tracking-tight">{combo.name}</h4>
-                          {isSelected && <i className="fas fa-check-circle text-emerald-500 animate-in zoom-in"></i>}
+                      <div className="flex-1 space-y-1.5">
+                        <div className="flex items-center gap-3">
+                          <h4 className="font-black text-gray-900 text-xl tracking-tight">{combo.name}</h4>
+                          {isSelected && (
+                            <div className="bg-emerald-500 text-white text-[8px] font-black px-2 py-1 rounded-full animate-in zoom-in">
+                              ТАҢДАЛДЫ
+                            </div>
+                          )}
                         </div>
-                        <p className="text-xs text-gray-500 font-medium leading-relaxed line-clamp-2">{combo.desc}</p>
+                        <p className="text-[11px] text-gray-500 font-semibold leading-relaxed line-clamp-2 pr-4">{combo.desc}</p>
+                      </div>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isSelected ? 'bg-emerald-500 text-white rotate-0' : 'bg-gray-50 text-gray-300 -rotate-45 group-hover:rotate-0 group-hover:bg-emerald-50 group-hover:text-emerald-500'}`}>
+                        <i className={`fas ${isSelected ? 'fa-check' : 'fa-arrow-right'} text-sm`}></i>
                       </div>
                     </div>
-                    <div className="absolute top-4 right-4 bg-white/60 backdrop-blur-sm px-2 py-1 rounded-lg border border-gray-100 text-[8px] font-black text-gray-400 uppercase tracking-tighter">
-                       РЕКОМЕНДАЦИЯ
-                    </div>
+                    
+                    {isSelected && (
+                      <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
+                    )}
                   </button>
                 );
               })}
@@ -141,23 +173,46 @@ const SubjectSelectionView: React.FC<SubjectSelectionViewProps> = ({ user, onUpd
                 {selectedElectives.length} / 2 ТАҢДАЛДЫ
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-3 px-2">
+            <div className="grid grid-cols-2 gap-4 px-2">
               {SUBJECTS.filter(s => s.isElective).map((sub) => {
                 const isSelected = !isCreative && selectedElectives.includes(sub.id);
+                const colorName = sub.color.replace('bg-', '').split('-')[0];
+                
                 return (
                   <button
                     key={sub.id}
                     onClick={() => toggleSubject(sub.id)}
-                    className={`p-5 rounded-[30px] border-2 flex flex-col items-center gap-3 transition-all group ${
+                    className={`relative p-6 rounded-[35px] border-2 flex flex-col items-center gap-4 transition-all duration-300 group overflow-hidden ${
                       isSelected 
-                        ? 'border-emerald-500 bg-emerald-50 shadow-lg' 
-                        : 'border-gray-50 bg-white hover:border-gray-100 opacity-70 grayscale-[0.5]'
+                        ? `border-${colorName}-500 bg-${colorName}-50/50 shadow-xl shadow-${colorName}-100` 
+                        : 'border-gray-100 bg-white hover:border-gray-200 opacity-80'
                     }`}
                   >
-                    <div className={`${sub.color} w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl shadow-md group-hover:scale-110 transition-transform`}>
+                    {/* Background Pattern/Glow */}
+                    {isSelected && (
+                      <div className={`absolute -right-4 -top-4 w-20 h-20 bg-${colorName}-500/10 rounded-full blur-2xl animate-pulse`}></div>
+                    )}
+                    
+                    <div className={`${sub.color} w-16 h-16 rounded-[22px] flex items-center justify-center text-white text-2xl shadow-lg group-hover:scale-110 transition-transform duration-500 relative z-10`}>
                       <i className={`fas ${sub.icon}`}></i>
+                      {isSelected && (
+                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-sm">
+                          <i className={`fas fa-check text-[10px] text-${colorName}-600`}></i>
+                        </div>
+                      )}
                     </div>
-                    <span className="text-[11px] font-black text-gray-800 text-center uppercase tracking-tighter leading-tight">{sub.name}</span>
+                    
+                    <div className="text-center space-y-1 relative z-10">
+                      <span className={`text-[11px] font-black uppercase tracking-tight leading-tight block ${isSelected ? `text-${colorName}-700` : 'text-gray-700'}`}>
+                        {sub.name}
+                      </span>
+                      <span className={`text-[8px] font-bold uppercase tracking-widest block opacity-60 ${isSelected ? `text-${colorName}-500` : 'text-gray-400'}`}>
+                        {isSelected ? 'Таңдалды' : 'Таңдау'}
+                      </span>
+                    </div>
+
+                    {/* Selection Indicator Bar */}
+                    <div className={`absolute bottom-0 left-0 right-0 h-1.5 transition-all duration-500 ${isSelected ? sub.color : 'bg-transparent'}`}></div>
                   </button>
                 );
               })}

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { SUBJECTS } from '../constants';
-import { Module, Lesson, Subject, AppView, StaffMember, UserProgress, NewsItem, University, Specialty } from '../types';
+import { Module, Lesson, Subject, AppView, StaffMember, UserProgress, NewsItem, University, Specialty, SubscriptionConfig } from '../types';
 import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
@@ -17,6 +17,8 @@ interface AdminPanelProps {
   setHomeConfig: (config: any) => void;
   news: NewsItem[];
   setNews: (news: NewsItem[]) => void;
+  subscriptionConfig: SubscriptionConfig;
+  setSubscriptionConfig: (config: SubscriptionConfig) => void;
   refreshData: () => Promise<void>;
 }
 
@@ -32,21 +34,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   setHomeConfig,
   news,
   setNews,
+  subscriptionConfig,
+  setSubscriptionConfig,
   refreshData
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'content' | 'news' | 'unis' | 'ai' | 'users' | 'staff' | 'home'>(
+  const [activeSubTab, setActiveSubTab] = useState<'content' | 'news' | 'unis' | 'ai' | 'users' | 'staff' | 'home' | 'subscription'>(
     currentView === 'admin-news' ? 'news' : 
     currentView === 'admin-content' ? 'content' :
     currentView === 'admin-users' ? 'users' :
     currentView === 'admin-staff' ? 'staff' :
     currentView === 'admin-home' ? 'home' :
     currentView === 'admin-unis' ? 'unis' :
-    currentView === 'admin-ai' ? 'ai' : 'content'
+    currentView === 'admin-ai' ? 'ai' : 
+    currentView === 'admin-subscription' ? 'subscription' : 'content'
   );
 
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<Partial<Lesson> | null>(null);
+  const [editingModule, setEditingModule] = useState<Partial<Module> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // News state
@@ -60,7 +66,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     { name: 'Аружан Серік', email: 'aru@example.com', chosenElectives: ['Биология', 'Химия'], points: 980, subscription: 'Free', role: 'student', completedLessons: [] },
   ]);
 
-  const allowedSubjects = SUBJECTS;
+  const isSuperAdmin = user.email === 'nur.abuuadi@gmail.com';
+  const staffMember = staffList.find(s => s.email === user.email);
+  const allowedSubjects = isSuperAdmin ? SUBJECTS : (staffMember?.permissions ? SUBJECTS.filter(s => staffMember.permissions.includes(s.id)) : []);
 
   const handleSaveNews = async () => {
     if (!editingNews?.title || !editingNews?.content) return;
@@ -163,6 +171,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const handleSaveSubscriptionConfig = async () => {
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from('config').upsert({ id: 'subscription', value: subscriptionConfig }, { onConflict: 'id' });
+      if (error) throw error;
+      await refreshData();
+      alert('Жазылым баптаулары сақталды!');
+    } catch (err) {
+      console.error("Error saving subscription config:", err);
+      alert('Қате орын алды: ' + (err as any).message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   React.useEffect(() => {
     if (currentView === 'admin-news') setActiveSubTab('news');
     else if (currentView === 'admin-content') setActiveSubTab('content');
@@ -175,7 +198,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const fetchStudents = async () => {
     try {
-      const { data, error } = await supabase.from('users').select('*').order('points', { ascending: false });
+      const { data, error } = await supabase.from('admin_users').select('*').order('points', { ascending: false });
       if (!error && data) setStudents(data);
     } catch (err) {
       console.error("Error fetching students:", err);
@@ -187,10 +210,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setIsSaving(true);
     try {
       const initialUsers = [
-        { email: 'student1@mail.kz', name: 'Әлихан Батыр', points: 1200, xp: 5000, subscription: 'premium', chosenElectives: ['chem', 'bio'], role: 'student', completedLessons: [] },
-        { email: 'student2@mail.kz', name: 'Аружан Серік', points: 850, xp: 3200, subscription: 'none', chosenElectives: ['math', 'phys'], role: 'student', completedLessons: [] }
+        { email: 'student1@mail.kz', name: 'Әлихан Батыр', points: 1200, xp: 5000, subscription: 'premium', pin: '1111', chosenElectives: ['chem', 'bio'], role: 'student', completedLessons: [] },
+        { email: 'student2@mail.kz', name: 'Аружан Серік', points: 850, xp: 3200, subscription: 'none', pin: '2222', chosenElectives: ['math', 'phys'], role: 'student', completedLessons: [] }
       ];
-      const { error } = await supabase.from('users').upsert(initialUsers);
+      const { error } = await supabase.from('admin_users').upsert(initialUsers);
       if (error) throw error;
       alert('Оқушылар жүктелді!');
       fetchStudents();
@@ -321,6 +344,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const seedInitialSubscriptionConfig = async () => {
+    if (!confirm('Бастапқы жазылым баптауларын жүктеуге сенімдісіз бе?')) return;
+    setIsSaving(true);
+    try {
+      const initialConfig: SubscriptionConfig = {
+        bundles: [
+          { id: 'single', name: '1 пән', priceMonth: '10 000 ₸', priceYear: '80 000 ₸', oldPriceMonth: '15 000 ₸', oldPriceYear: '120 000 ₸', desc: 'Таңдаған бір пәніңізге толық қолжетімділік.', color: 'border-gray-200' },
+          { id: 'double', name: '2 пән', priceMonth: '15 000 ₸', priceYear: '120 000 ₸', oldPriceMonth: '25 000 ₸', oldPriceYear: '200 000 ₸', desc: 'Екі таңдау пәніңізге толық қолжетімділік.', color: 'border-blue-500 bg-blue-50/30' },
+          { id: 'full', name: '5 пән (Толық пакет)', priceMonth: '40 000 ₸', priceYear: '320 000 ₸', oldPriceMonth: '60 000 ₸', oldPriceYear: '480 000 ₸', desc: 'Барлық 3 негізгі пән + 2 таңдау пәні. Ең тиімді таңдау!', color: 'border-emerald-500 bg-emerald-50 shadow-xl shadow-emerald-100/50', badge: 'Ең тиімді' },
+        ],
+        qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://kaspi.kz/pay/SMART_UBT',
+        kaspiNumber: '8 777 190 27 96',
+        kaspiName: 'Ерназар Н.',
+        whatsappNumber: '77771902796'
+      };
+      const { error } = await supabase.from('config').upsert({ id: 'subscription', value: initialConfig }, { onConflict: 'id' });
+      if (error) throw error;
+      setSubscriptionConfig(initialConfig);
+      alert('Бастапқы жазылым баптаулары орнатылды!');
+      refreshData();
+    } catch (err) {
+      console.error("Subscription seed error:", err);
+      alert('Қате: ' + (err as any).message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const seedInitialStaff = async () => {
     if (!confirm('Бастапқы қызметкерлерді жүктеуге сенімдісіз бе?')) return;
     setIsSaving(true);
@@ -382,7 +433,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setIsSaving(true);
     try {
       const newStaff = { ...editingStaff, role: editingStaff.role || 'teacher', permissions: editingStaff.permissions || [] } as StaffMember;
-      const { error } = await supabase.from('staff').upsert(newStaff, { onConflict: 'email' });
+      
+      // Try to check if staff exists first to decide between insert and update
+      // This can sometimes bypass certain RLS issues with upsert
+      const { data: existing } = await supabase.from('staff').select('email').eq('email', newStaff.email).maybeSingle();
+      
+      let error;
+      if (existing) {
+        const { error: updateError } = await supabase.from('staff').update(newStaff).eq('email', newStaff.email);
+        error = updateError;
+      } else {
+        const { error: insertError } = await supabase.from('staff').insert([newStaff]);
+        error = insertError;
+      }
+
       if (error) throw error;
       
       setStaffList(prev => {
@@ -395,7 +459,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       alert('Қызметкер сақталды!');
     } catch (err) {
       console.error("Error saving staff:", err);
-      alert('Қате орын алды: ' + (err as any).message);
+      alert('Қате орын алды: ' + (err as any).message + '\n\nЕскерту: Supabase-те "staff" кестесіне RLS саясатын (Policy) қосу қажет болуы мүмкін.');
     } finally {
       setIsSaving(false);
     }
@@ -414,26 +478,37 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleSaveStudent = async () => {
-    if (!editingStudent?.name || !editingStudent?.email) return;
+    if (!editingStudent?.name) {
+      alert('Аты-жөні өрісін толтырыңыз');
+      return;
+    }
+    if (!editingStudent?.email) {
+      alert('Email өрісін толтырыңыз');
+      return;
+    }
+    
     setIsSaving(true);
     try {
       const studentData = {
         ...editingStudent,
         points: editingStudent.points || 0,
         subscription: editingStudent.subscription || 'Free',
+        pin: editingStudent.pin || Math.floor(1000 + Math.random() * 9000).toString(),
         chosenElectives: editingStudent.chosenElectives || [],
         role: 'student',
         completedLessons: editingStudent.completedLessons || []
       };
-      const { error } = await supabase.from('users').upsert(studentData);
+      
+      const { error } = await supabase.from('admin_users').upsert(studentData);
       if (error) throw error;
+      
       alert('Оқушы деректері сақталды!');
       setShowStudentModal(false);
       setEditingStudent(null);
       fetchStudents();
     } catch (err) {
       console.error("Error saving student:", err);
-      alert('Қате: ' + (err as any).message);
+      alert('Сақтау кезінде қате кетті: ' + (err as any).message);
     } finally {
       setIsSaving(false);
     }
@@ -442,7 +517,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleDeleteStudent = async (email: string) => {
     if (!confirm('Оқушыны өшіруге сенімдісіз бе?')) return;
     try {
-      const { error } = await supabase.from('users').delete().eq('email', email);
+      const { error } = await supabase.from('admin_users').delete().eq('email', email);
       if (error) throw error;
       fetchStudents();
     } catch (err) {
@@ -485,6 +560,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (error) throw error;
       
       setAllModules(prev => ({ ...prev, [subjectId]: modules }));
+      await refreshData();
       alert('Сәтті сақталды!');
     } catch (err) {
       console.error("Error saving modules:", err);
@@ -494,22 +570,37 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const addModule = () => {
-    if (!selectedSubject) return;
-    const currentModules = allModules[selectedSubject.id] || [];
-    const newModule: Module = {
-      id: Date.now().toString(),
-      title: 'Жаңа модуль',
-      lessons: [],
-      weekNumber: currentModules.length + 1
-    };
-    handleSaveModules(selectedSubject.id, [...currentModules, newModule]);
-  };
-
   const deleteModule = (moduleId: string) => {
     if (!selectedSubject || !confirm('Модульді өшіруге сенімдісіз бе?')) return;
     const currentModules = allModules[selectedSubject.id] || [];
     handleSaveModules(selectedSubject.id, currentModules.filter(m => m.id !== moduleId));
+  };
+
+  const saveModuleInfo = () => {
+    if (!selectedSubject || !editingModule) return;
+    const currentModules = [...(allModules[selectedSubject.id] || [])];
+    
+    if (editingModule.id) {
+      const modIdx = currentModules.findIndex(m => m.id === editingModule.id);
+      if (modIdx !== -1) {
+        const updatedModule = { ...currentModules[modIdx], ...editingModule } as Module;
+        currentModules[modIdx] = updatedModule;
+        if (selectedModule && selectedModule.id === editingModule.id) {
+          setSelectedModule(updatedModule);
+        }
+      }
+    } else {
+      const newModule: Module = {
+        id: Date.now().toString(),
+        title: editingModule.title || 'Жаңа модуль',
+        lessons: [],
+        weekNumber: editingModule.weekNumber || (currentModules.length + 1)
+      };
+      currentModules.push(newModule);
+    }
+    
+    handleSaveModules(selectedSubject.id, currentModules);
+    setEditingModule(null);
   };
 
   const saveLesson = () => {
@@ -713,7 +804,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <i className="fas fa-arrow-left"></i> Пәндерге қайту
                       </button>
                       <h3 className="text-xl font-black font-outfit">{selectedSubject.name} модульдері</h3>
-                      <button onClick={addModule} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg">+ Модуль</button>
+                      <button onClick={() => setEditingModule({ title: '', weekNumber: (allModules[selectedSubject.id]?.length || 0) + 1 })} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg">+ Модуль</button>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -724,6 +815,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{mod.lessons.length} сабақ • {mod.weekNumber}-апта</p>
                           </div>
                           <div className="flex gap-2">
+                            <button onClick={() => setEditingModule(mod)} className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all">
+                              <i className="fas fa-edit text-[10px]"></i>
+                            </button>
                             <button onClick={() => setSelectedModule(mod)} className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all">
                               <i className="fas fa-chevron-right text-[10px]"></i>
                             </button>
@@ -741,7 +835,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <button onClick={() => setSelectedModule(null)} className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">
                         <i className="fas fa-arrow-left"></i> Модульдерге қайту
                       </button>
-                      <h3 className="text-xl font-black font-outfit">{selectedModule.title} сабақтары</h3>
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-xl font-black font-outfit">{selectedModule.title} сабақтары</h3>
+                        <button onClick={() => setEditingModule(selectedModule)} className="text-slate-400 hover:text-indigo-600 transition-colors">
+                          <i className="fas fa-edit text-sm"></i>
+                        </button>
+                      </div>
                       <button onClick={() => setSelectedLesson({ reinforcement: [], homework: [] })} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg">+ Сабақ</button>
                     </div>
 
@@ -838,16 +937,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <button onClick={seedInitialUsers} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-200 transition-all">Бастапқы оқушылар</button>
                     )}
                     <input type="text" placeholder="Іздеу..." className="px-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 ring-indigo-500" />
-                    <button onClick={() => { setEditingStudent({}); setShowStudentModal(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg">+ Оқушы қосу</button>
+                    <button 
+                      onClick={() => {
+                        setEditingStudent({
+                          name: '',
+                          email: '',
+                          subscription: 'Free',
+                          activationCode: Math.floor(100000 + Math.random() * 900000).toString(),
+                          activeSubjects: [],
+                          points: 0
+                        }); 
+                        setShowStudentModal(true); 
+                      }} 
+                      className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg"
+                    >
+                      + Оқушы қосу
+                    </button>
                   </div>
                </div>
-               <div className="overflow-x-auto">
+                <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead className="bg-gray-50 dark:bg-slate-900 text-[9px] font-black uppercase text-gray-400">
                       <tr>
                         <th className="p-4">Оқушы</th>
-                        <th className="p-4">Пәндер</th>
-                        <th className="p-4">Балл/XP</th>
+                        <th className="p-4">Пәндер / Код</th>
+                        <th className="p-4">Мерзімі</th>
+                        <th className="p-4 text-center">Балл/XP</th>
                         <th className="p-4 text-right">Статус</th>
                       </tr>
                     </thead>
@@ -859,18 +974,66 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             <p className="text-[10px] text-gray-400">{s.email}</p>
                           </td>
                           <td className="p-4">
-                             <div className="flex gap-1">
-                                {s.chosenElectives.map((e: string) => <span key={e} className="text-[8px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded font-black uppercase">{e}</span>)}
+                             <div className="flex flex-col gap-1">
+                                <div className="flex gap-1 flex-wrap">
+                                  {(s.activeSubjects || s.chosenElectives || []).map((e: string) => (
+                                    <span key={e} className="text-[8px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded font-black uppercase">{e}</span>
+                                  ))}
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[9px] font-black text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded uppercase tracking-widest">
+                                    PIN: {s.pin || '—'}
+                                  </span>
+                                  {s.pin && (
+                                    <button 
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(s.pin || '');
+                                        alert('PIN көшірілді!');
+                                      }}
+                                      className="text-slate-300 hover:text-indigo-600 transition-colors"
+                                      title="Көшіру"
+                                    >
+                                      <i className="fas fa-copy text-[10px]"></i>
+                                    </button>
+                                  )}
+                                </div>
                              </div>
                           </td>
                           <td className="p-4">
+                            <span className="text-[10px] font-bold text-slate-500">
+                              {s.subscriptionExpiresAt ? new Date(s.subscriptionExpiresAt).toLocaleDateString() : '—'}
+                            </span>
+                          </td>
+                          <td className="p-4 text-center">
                              <span className="font-black text-emerald-600 text-xs">{s.points} ★</span>
                           </td>
                           <td className="p-4 text-right">
-                            <div className="flex justify-end gap-2">
-                              <button onClick={() => { setEditingStudent(s); setShowStudentModal(true); }} className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all"><i className="fas fa-edit text-[10px]"></i></button>
-                              <button onClick={() => handleDeleteStudent(s.email)} className="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"><i className="fas fa-trash text-[10px]"></i></button>
-                              <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest self-center ml-2">{s.subscription}</span>
+                            <div className="flex justify-end gap-2 items-center">
+                              <button 
+                                onClick={async () => {
+                                  const newStatus = s.subscription === 'Premium' ? 'Free' : 'Premium';
+                                  if (!confirm(`Оқушыны ${newStatus} статусына ауыстыруға сенімдісіз бе?`)) return;
+                                  try {
+                                    const { error } = await supabase.from('admin_users').update({ subscription: newStatus }).eq('email', s.email);
+                                    if (error) throw error;
+                                    fetchStudents();
+                                    alert('Статус жаңартылды!');
+                                  } catch (err) {
+                                    alert('Қате: ' + (err as any).message);
+                                  }
+                                }}
+                                className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                                  s.subscription === 'Premium' 
+                                  ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' 
+                                  : 'bg-gray-100 text-gray-500 hover:bg-indigo-600 hover:text-white'
+                                }`}
+                              >
+                                {s.subscription === 'Premium' ? 'Premium' : 'Free'}
+                              </button>
+                              <div className="flex gap-1">
+                                <button onClick={() => { setEditingStudent(s); setShowStudentModal(true); }} className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all"><i className="fas fa-edit text-[10px]"></i></button>
+                                <button onClick={() => handleDeleteStudent(s.email)} className="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"><i className="fas fa-trash text-[10px]"></i></button>
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -1005,6 +1168,172 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   ))}
                </div>
+            </div>
+          )}
+
+          {activeSubTab === 'subscription' && (
+            <div className="bg-white dark:bg-slate-800 p-8 rounded-[40px] border border-gray-100 dark:border-slate-700 shadow-sm space-y-8 animate-in fade-in">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-black font-outfit">Жазылымды басқару</h3>
+                <div className="flex gap-3">
+                  <button onClick={seedInitialSubscriptionConfig} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-200 transition-all">Бастапқы баптаулар</button>
+                  <button 
+                    onClick={handleSaveSubscriptionConfig}
+                    disabled={isSaving}
+                    className="bg-emerald-600 text-white px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg hover:bg-emerald-700 transition-all disabled:opacity-50"
+                  >
+                    {isSaving ? 'Сақталуда...' : 'Сақтау'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Төлем деректері</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Kaspi нөмірі</label>
+                      <input 
+                        type="text" 
+                        value={subscriptionConfig.kaspiNumber} 
+                        onChange={e => setSubscriptionConfig({...subscriptionConfig, kaspiNumber: e.target.value})}
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl text-sm outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Kaspi иесінің аты</label>
+                      <input 
+                        type="text" 
+                        value={subscriptionConfig.kaspiName} 
+                        onChange={e => setSubscriptionConfig({...subscriptionConfig, kaspiName: e.target.value})}
+                        className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl text-sm outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">WhatsApp нөмірі (77...)</label>
+                    <input 
+                      type="text" 
+                      value={subscriptionConfig.whatsappNumber} 
+                      onChange={e => setSubscriptionConfig({...subscriptionConfig, whatsappNumber: e.target.value})}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl text-sm outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Kaspi QR суреті</label>
+                    <div className="flex items-center gap-4">
+                      <div className="w-20 h-20 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl flex items-center justify-center overflow-hidden">
+                        {subscriptionConfig.qrCodeUrl ? (
+                          <img src={subscriptionConfig.qrCodeUrl} alt="QR Preview" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                        ) : (
+                          <i className="fas fa-qrcode text-gray-300"></i>
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <input 
+                          type="file" 
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setSubscriptionConfig({...subscriptionConfig, qrCodeUrl: reader.result as string});
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="hidden" 
+                          id="qr-upload"
+                        />
+                        <label 
+                          htmlFor="qr-upload"
+                          className="inline-block px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-indigo-100 transition-all"
+                        >
+                          Суретті жүктеу
+                        </label>
+                        <p className="text-[8px] text-gray-400 italic">QR код суретін тікелей жүктеңіз немесе төмендегі сілтемені өзгертіңіз</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Kaspi QR URL</label>
+                    <input 
+                      type="text" 
+                      value={subscriptionConfig.qrCodeUrl} 
+                      onChange={e => setSubscriptionConfig({...subscriptionConfig, qrCodeUrl: e.target.value})}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl text-sm outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Пакеттер мен бағалар</h4>
+                  <div className="space-y-4">
+                    {subscriptionConfig.bundles.map((bundle, idx) => (
+                      <div key={bundle.id} className="p-4 bg-gray-50 dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-700 space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{bundle.name}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[8px] font-black text-slate-400 uppercase mb-1 block">Айлық баға</label>
+                            <input 
+                              type="text" 
+                              value={bundle.priceMonth} 
+                              onChange={e => {
+                                const newBundles = [...subscriptionConfig.bundles];
+                                newBundles[idx] = { ...bundle, priceMonth: e.target.value };
+                                setSubscriptionConfig({ ...subscriptionConfig, bundles: newBundles });
+                              }}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg text-xs outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[8px] font-black text-slate-400 uppercase mb-1 block">Жылдық баға</label>
+                            <input 
+                              type="text" 
+                              value={bundle.priceYear} 
+                              onChange={e => {
+                                const newBundles = [...subscriptionConfig.bundles];
+                                newBundles[idx] = { ...bundle, priceYear: e.target.value };
+                                setSubscriptionConfig({ ...subscriptionConfig, bundles: newBundles });
+                              }}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg text-xs outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[8px] font-black text-slate-400 uppercase mb-1 block">Ескі айлық</label>
+                            <input 
+                              type="text" 
+                              value={bundle.oldPriceMonth || ''} 
+                              onChange={e => {
+                                const newBundles = [...subscriptionConfig.bundles];
+                                newBundles[idx] = { ...bundle, oldPriceMonth: e.target.value };
+                                setSubscriptionConfig({ ...subscriptionConfig, bundles: newBundles });
+                              }}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg text-xs outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[8px] font-black text-slate-400 uppercase mb-1 block">Ескі жылдық</label>
+                            <input 
+                              type="text" 
+                              value={bundle.oldPriceYear || ''} 
+                              onChange={e => {
+                                const newBundles = [...subscriptionConfig.bundles];
+                                newBundles[idx] = { ...bundle, oldPriceYear: e.target.value };
+                                setSubscriptionConfig({ ...subscriptionConfig, bundles: newBundles });
+                              }}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg text-xs outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1186,12 +1515,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
 
             <div className="flex gap-3 mt-10">
-              <button onClick={() => setSelectedLesson(null)} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-slate-500 hover:bg-gray-200 transition-all">Болдырмау</button>
+              <button onClick={() => setSelectedLesson(null)} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-slate-500 hover:bg-gray-200 transition-all">Артқа қайту</button>
               <button 
                 onClick={saveLesson}
                 className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white shadow-xl hover:bg-indigo-700 transition-all"
               >
-                Сақтау
+                Растау
               </button>
             </div>
           </div>
@@ -1201,7 +1530,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Specialty Modal */}
       {showSpecModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-200">
+          <div className="bg-white dark:bg-slate-800 w-full max-w-lg max-h-[90vh] overflow-y-auto no-scrollbar rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-200">
             <h3 className="text-xl font-black font-outfit mb-8">{editingSpec?.id ? 'Мамандықты өңдеу' : 'Жаңа мамандық'}</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
@@ -1237,12 +1566,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
             <div className="flex gap-3 mt-10">
-              <button onClick={() => setShowSpecModal(false)} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-slate-500 hover:bg-gray-200 transition-all">Болдырмау</button>
+              <button onClick={() => setShowSpecModal(false)} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-slate-500 hover:bg-gray-200 transition-all">Артқа қайту</button>
               <button 
                 onClick={handleSaveSpec} 
                 className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white shadow-xl hover:bg-indigo-700 transition-all"
               >
-                Сақтау
+                Растау
               </button>
             </div>
           </div>
@@ -1252,7 +1581,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* News Modal */}
       {showNewsModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-200">
+          <div className="bg-white dark:bg-slate-800 w-full max-w-lg max-h-[90vh] overflow-y-auto no-scrollbar rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-200">
             <h3 className="text-xl font-black font-outfit mb-8">{editingNews?.id ? 'Жаңалықты өңдеу' : 'Жаңа жаңалық'}</h3>
             <div className="space-y-4">
               <div>
@@ -1286,13 +1615,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
             <div className="flex gap-3 mt-10">
-              <button onClick={() => setShowNewsModal(false)} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-slate-500 hover:bg-gray-200 transition-all">Болдырмау</button>
+              <button onClick={() => setShowNewsModal(false)} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-slate-500 hover:bg-gray-200 transition-all">Артқа қайту</button>
               <button 
                 onClick={handleSaveNews} 
                 disabled={isSaving}
                 className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white shadow-xl hover:bg-indigo-700 transition-all disabled:opacity-50"
               >
-                {isSaving ? 'Сақталуда...' : 'Сақтау'}
+                {isSaving ? 'Сақталуда...' : 'Растау'}
               </button>
             </div>
           </div>
@@ -1302,9 +1631,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* University Modal */}
       {showUniModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-200">
+          <div className="bg-white dark:bg-slate-800 w-full max-w-lg max-h-[90vh] overflow-y-auto no-scrollbar rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-200">
             <h3 className="text-xl font-black font-outfit mb-8">{editingUni?.id ? 'ЖОО-ны өңдеу' : 'Жаңа ЖОО'}</h3>
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto no-scrollbar pr-2">
+            <div className="space-y-4">
               <div>
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Атауы</label>
                 <input 
@@ -1379,13 +1708,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
             <div className="flex gap-3 mt-10">
-              <button onClick={() => setShowUniModal(false)} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-slate-500 hover:bg-gray-200 transition-all">Болдырмау</button>
+              <button onClick={() => setShowUniModal(false)} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-slate-500 hover:bg-gray-200 transition-all">Артқа қайту</button>
               <button 
                 onClick={handleSaveUni} 
                 disabled={isSaving}
                 className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white shadow-xl hover:bg-indigo-700 transition-all disabled:opacity-50"
               >
-                {isSaving ? 'Сақталуда...' : 'Сақтау'}
+                {isSaving ? 'Сақталуда...' : 'Растау'}
               </button>
             </div>
           </div>
@@ -1395,7 +1724,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Staff Modal */}
       {showStaffModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-200">
+          <div className="bg-white dark:bg-slate-800 w-full max-w-lg max-h-[90vh] overflow-y-auto no-scrollbar rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-200">
             <h3 className="text-xl font-black font-outfit mb-8">Жаңа қызметкер</h3>
             <div className="space-y-4">
               <div>
@@ -1423,18 +1752,43 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   onChange={e => setEditingStaff({...editingStaff, role: e.target.value as any})}
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl text-sm outline-none"
                 >
-                  <option value="teacher">Мұғалім</option>
+                  <option value="teacher">Мұғалім (Куратор)</option>
                   <option value="super-admin">Админ</option>
                 </select>
               </div>
+              <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Рұқсат етілген пәндер</label>
+                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 bg-gray-50 dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700">
+                  {SUBJECTS.map(sub => (
+                    <label key={sub.id} className="flex items-center gap-2 p-2 hover:bg-white dark:hover:bg-slate-800 rounded-lg cursor-pointer transition-colors">
+                      <input 
+                        type="checkbox" 
+                        checked={editingStaff?.permissions?.includes(sub.id) || false}
+                        onChange={e => {
+                          const perms = [...(editingStaff?.permissions || [])];
+                          if (e.target.checked) {
+                            if (!perms.includes(sub.id)) perms.push(sub.id);
+                          } else {
+                            const idx = perms.indexOf(sub.id);
+                            if (idx > -1) perms.splice(idx, 1);
+                          }
+                          setEditingStaff({...editingStaff, permissions: perms});
+                        }}
+                        className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                      />
+                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{sub.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="flex gap-3 mt-10">
-              <button onClick={() => setShowStaffModal(false)} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-slate-500 hover:bg-gray-200 transition-all">Болдырмау</button>
+              <button onClick={() => setShowStaffModal(false)} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-slate-500 hover:bg-gray-200 transition-all">Артқа қайту</button>
               <button 
                 onClick={handleSaveStaff} 
                 className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white shadow-xl hover:bg-indigo-700 transition-all"
               >
-                Қосу
+                Растау
               </button>
             </div>
           </div>
@@ -1444,7 +1798,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Student Modal */}
       {showStudentModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-200">
+          <div className="bg-white dark:bg-slate-800 w-full max-w-lg max-h-[90vh] overflow-y-auto no-scrollbar rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-200">
             <h3 className="text-xl font-black font-outfit mb-8">Жаңа оқушы</h3>
             <div className="space-y-4">
               <div>
@@ -1477,14 +1831,128 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <option value="Ultra">Ultra</option>
                 </select>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">6 таңбалы код</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      maxLength={6}
+                      value={editingStudent?.activationCode || ''} 
+                      onChange={e => setEditingStudent({...editingStudent, activationCode: e.target.value.toUpperCase()})}
+                      className="flex-1 px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl text-sm outline-none font-mono"
+                      placeholder="123456"
+                    />
+                    <button 
+                      onClick={() => {
+                        const code = Math.floor(100000 + Math.random() * 900000).toString();
+                        setEditingStudent({...editingStudent, activationCode: code});
+                      }}
+                      className="px-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"
+                      title="Код генерациялау"
+                    >
+                      <i className="fas fa-sync-alt text-xs"></i>
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Аяқталу уақыты</label>
+                  <input 
+                    type="date" 
+                    value={editingStudent?.subscriptionExpiresAt?.split('T')[0] || ''} 
+                    onChange={e => setEditingStudent({...editingStudent, subscriptionExpiresAt: e.target.value})}
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl text-sm outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Рұқсат етілген пәндер</label>
+                <div className="flex flex-wrap gap-2 p-3 bg-gray-50 dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700">
+                  {SUBJECTS.map(sub => (
+                    <button
+                      key={sub.id}
+                      onClick={() => {
+                        const current = editingStudent?.activeSubjects || [];
+                        const next = current.includes(sub.id) 
+                          ? current.filter(id => id !== sub.id)
+                          : [...current, sub.id];
+                        setEditingStudent({...editingStudent, activeSubjects: next});
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                        (editingStudent?.activeSubjects || []).includes(sub.id)
+                          ? 'bg-indigo-600 text-white shadow-md'
+                          : 'bg-white dark:bg-slate-800 text-gray-400 border border-gray-100 dark:border-slate-700'
+                      }`}
+                    >
+                      {sub.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="flex gap-3 mt-10">
-              <button onClick={() => setShowStudentModal(false)} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-slate-500 hover:bg-gray-200 transition-all">Болдырмау</button>
+              <button 
+                onClick={() => setShowStudentModal(false)} 
+                disabled={isSaving}
+                className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-slate-500 hover:bg-gray-200 transition-all disabled:opacity-50"
+              >
+                Артқа қайту
+              </button>
               <button 
                 onClick={handleSaveStudent} 
-                className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white shadow-xl hover:bg-indigo-700 transition-all"
+                disabled={isSaving}
+                className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white shadow-xl hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Қосу
+                {isSaving ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i>
+                    Сақталуда...
+                  </>
+                ) : 'Растау'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Module Edit Modal */}
+      {editingModule && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-[40px] p-8 shadow-2xl animate-in zoom-in-95 duration-300">
+            <h3 className="text-2xl font-black font-outfit mb-6">{editingModule.id ? 'Модульді өзгерту' : 'Жаңа модуль қосу'}</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Модуль атауы</label>
+                <input 
+                  type="text" 
+                  value={editingModule.title || ''} 
+                  onChange={e => setEditingModule({...editingModule, title: e.target.value})}
+                  placeholder="Мысалы: Бейорганикалық химия"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Апта нөмірі</label>
+                <input 
+                  type="number" 
+                  value={editingModule.weekNumber || ''} 
+                  onChange={e => setEditingModule({...editingModule, weekNumber: parseInt(e.target.value)})}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-8">
+              <button 
+                onClick={() => setEditingModule(null)} 
+                className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-slate-500 hover:bg-gray-200 transition-all"
+              >
+                Болдырмау
+              </button>
+              <button 
+                onClick={saveModuleInfo} 
+                disabled={isSaving || !editingModule.title}
+                className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white shadow-xl hover:bg-indigo-700 transition-all disabled:opacity-50"
+              >
+                {isSaving ? 'Сақталуда...' : 'Сақтау'}
               </button>
             </div>
           </div>

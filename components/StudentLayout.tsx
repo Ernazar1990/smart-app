@@ -84,7 +84,7 @@ const StudentLayout: React.FC<StudentLayoutProps> = ({ children, currentView, se
         </header>
       )}
       
-      <main className={`flex-1 p-3 md:p-6 pb-24 ${!hideNav ? 'lg:pr-24' : ''}`}>
+      <main className={`flex-1 p-3 md:p-6 pb-24 ${!hideNav ? 'md:pr-24' : ''}`}>
         <div className="max-w-5xl mx-auto">
           {children}
         </div>
@@ -97,7 +97,7 @@ const StudentLayout: React.FC<StudentLayoutProps> = ({ children, currentView, se
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed bottom-0 left-0 right-0 lg:bottom-auto lg:top-[38%] lg:right-4 lg:left-auto lg:-translate-y-1/2 z-[70]"
+            className="fixed bottom-0 left-0 right-0 md:top-auto md:bottom-6 md:right-6 md:left-auto md:w-16 z-[70]"
           >
             <BottomNav currentView={currentView} setView={setView} />
           </motion.div>
@@ -108,7 +108,7 @@ const StudentLayout: React.FC<StudentLayoutProps> = ({ children, currentView, se
         href="https://wa.me/87771902796" 
         target="_blank" 
         rel="noreferrer"
-        className="fixed bottom-24 right-6 w-14 h-14 bg-[#25D366] text-white rounded-full shadow-2xl flex items-center justify-center text-2xl animate-bounce z-40"
+        className="fixed bottom-24 right-6 lg:right-auto lg:left-6 w-14 h-14 bg-[#25D366] text-white rounded-full shadow-2xl flex items-center justify-center text-2xl animate-bounce z-40"
       >
         <i className="fab fa-whatsapp"></i>
       </a>

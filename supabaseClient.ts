@@ -23,3 +23,19 @@ if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('placeholder')) {
 }
 
 export const supabase = createClient(finalUrl, finalKey);
+
+// Connection test
+export const testSupabaseConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('news').select('id').limit(1);
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    let message = err.message;
+    if (message === 'Failed to fetch') {
+      message = 'Серверге қосылу мүмкін емес. Supabase жобасы тоқтатылған (Paused) болуы мүмкін.';
+    }
+    console.error("Supabase connection test failed:", message);
+    return { success: false, error: message };
+  }
+};

@@ -214,7 +214,12 @@ export const SUBJECTS: Subject[] = [
 ];
 
 export const INTERNATIONAL_GRANTS: InternationalGrant[] = [
-  { id: 'hungary', country: 'Венгрия', title: 'Stipendium Hungaricum', totalGrants: '250 грант', programs: 'Барлық бағыттар', language: 'Ағылшын', deadline: 'Қаңтар', topUnis: ['ELTE', 'University of Debrecen'], image: '', color: 'from-green-600 to-red-600' }
+  { id: 'hungary', country: 'Венгрия', title: 'Stipendium Hungaricum', totalGrants: '250 грант', programs: 'Барлық бағыттар', language: 'Ағылшын', deadline: 'Қаңтар', topUnis: ['ELTE', 'University of Debrecen', 'BME', 'Corvinus University'], image: 'https://picsum.photos/seed/hungary/800/400', color: 'from-green-600 to-red-600' },
+  { id: 'turkey', country: 'Түркия', title: 'Türkiye Bursları', totalGrants: '500+ грант', programs: 'Бакалавриат, Магистратура', language: 'Түрік/Ағылшын', deadline: 'Ақпан', topUnis: ['Istanbul University', 'METU', 'Hacettepe University', 'Ankara University'], image: 'https://picsum.photos/seed/turkey/800/400', color: 'from-red-600 to-red-800' },
+  { id: 'china', country: 'Қытай', title: 'CSC Scholarship', totalGrants: '100+ грант', programs: 'Техникалық, Гуманитарлық', language: 'Қытай/Ағылшын', deadline: 'Наурыз', topUnis: ['Tsinghua University', 'Peking University', 'Fudan University'], image: 'https://picsum.photos/seed/china/800/400', color: 'from-red-500 to-yellow-500' },
+  { id: 'korea', country: 'Оңтүстік Корея', title: 'GKS (Global Korea Scholarship)', totalGrants: '50+ грант', programs: 'STEM, Өнер, Бизнес', language: 'Корей/Ағылшын', deadline: 'Наурыз', topUnis: ['SNU', 'KAIST', 'Yonsei University', 'Korea University'], image: 'https://picsum.photos/seed/korea/800/400', color: 'from-blue-600 to-red-500' },
+  { id: 'germany', country: 'Германия', title: 'DAAD / Тегін оқу', totalGrants: 'Шексіз (Мемлекеттік)', programs: 'Инженерия, Ғылым', language: 'Неміс/Ағылшын', deadline: 'Жыл бойы', topUnis: ['TU Munich', 'Heidelberg University', 'RWTH Aachen'], image: 'https://picsum.photos/seed/germany/800/400', color: 'from-yellow-500 to-black' },
+  { id: 'usa', country: 'АҚШ', title: 'Global UGRAD / Fullbright', totalGrants: '20+ грант', programs: 'Алмасу бағдарламалары', language: 'Ағылшын', deadline: 'Желтоқсан', topUnis: ['Harvard', 'MIT', 'Stanford', 'UC Berkeley'], image: 'https://picsum.photos/seed/usa/800/400', color: 'from-blue-800 to-red-600' }
 ];
 
 export const MARATHON_TASKS = ["Сабақты көру", "Тест талдау", "Конспект жазу"];

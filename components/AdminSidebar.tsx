@@ -6,18 +6,24 @@ interface AdminSidebarProps {
   currentView: AppView;
   setView: (view: AppView) => void;
   userRole?: string;
+  userEmail?: string;
 }
 
-const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setView, userRole }) => {
+const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setView, userRole, userEmail }) => {
+  const isSuperAdmin = userEmail === 'nur.abuuadi@gmail.com';
+
   const adminMenuItems = [
-    { id: 'admin-home', icon: 'fa-home', label: 'Басты бет' },
-    { id: 'admin-content', icon: 'fa-book-open', label: 'Сабақтар' },
-    { id: 'admin-news', icon: 'fa-rss', label: 'Жаңалықтар' },
-    { id: 'admin-users', icon: 'fa-users', label: 'Оқушылар' },
-    { id: 'admin-staff', icon: 'fa-user-tie', label: 'Қызметкерлер' },
-    { id: 'admin-unis', icon: 'fa-university', label: 'ЖОО' },
-    { id: 'admin-ai', icon: 'fa-robot', label: 'AI Hub' },
+    { id: 'admin-home', icon: 'fa-home', label: 'Басты бет', superOnly: true },
+    { id: 'admin-content', icon: 'fa-book-open', label: 'Сабақтар', superOnly: false },
+    { id: 'admin-news', icon: 'fa-rss', label: 'Жаңалықтар', superOnly: true },
+    { id: 'admin-users', icon: 'fa-users', label: 'Оқушылар', superOnly: true },
+    { id: 'admin-staff', icon: 'fa-user-tie', label: 'Қызметкерлер', superOnly: true },
+    { id: 'admin-unis', icon: 'fa-university', label: 'ЖОО', superOnly: true },
+    { id: 'admin-ai', icon: 'fa-robot', label: 'AI Hub', superOnly: true },
+    { id: 'admin-subscription', icon: 'fa-credit-card', label: 'Жазылым', superOnly: true },
   ];
+
+  const filteredItems = adminMenuItems.filter(item => isSuperAdmin || !item.superOnly);
 
   return (
     <div className="w-72 bg-[#0F172A] border-r border-slate-800 h-screen fixed left-0 top-0 flex flex-col p-6 z-30 text-slate-300">
@@ -32,7 +38,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setView, userR
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto no-scrollbar">
-        {adminMenuItems.map((item) => {
+        {filteredItems.map((item) => {
           const isActive = currentView === item.id;
           return (
             <button

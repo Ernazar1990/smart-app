@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Module, UserProgress, Lesson, Subject } from '../types';
 
 interface RoadmapViewProps {
@@ -8,17 +8,32 @@ interface RoadmapViewProps {
   user: UserProgress;
   onSelectLesson: (lesson: Lesson) => void;
   subjects: Subject[];
+  initialSubjectId?: string | null;
 }
 
-const RoadmapView: React.FC<RoadmapViewProps> = ({ onBack, allModules, user, onSelectLesson, subjects }) => {
+const RoadmapView: React.FC<RoadmapViewProps> = ({ onBack, allModules, user, onSelectLesson, subjects, initialSubjectId }) => {
   const [selectedWeek, setSelectedWeek] = useState(1);
+  
+  useEffect(() => {
+    const btn = document.getElementById(`week-btn-${selectedWeek}`);
+    if (btn) {
+      btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [selectedWeek]);
   
   // Get all relevant subjects (3 mandatory + 2 electives)
   const mySubjects = subjects.filter(sub => 
     !sub.isElective || user.chosenElectives.includes(sub.id)
   );
 
-  const [activeSubjectId, setActiveSubjectId] = useState(mySubjects[0]?.id || 'chem');
+  const [activeSubjectId, setActiveSubjectId] = useState(initialSubjectId || mySubjects[0]?.id || 'chem');
+  
+  // Update activeSubjectId if initialSubjectId changes
+  useEffect(() => {
+    if (initialSubjectId) {
+      setActiveSubjectId(initialSubjectId);
+    }
+  }, [initialSubjectId]);
   
   const modules = allModules[activeSubjectId] || [];
   const currentModule = modules.find(m => m.weekNumber === selectedWeek) || modules[0];
@@ -33,7 +48,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ onBack, allModules, user, onS
                 <i className="fas fa-calendar-check"></i>
               </div>
               <div>
-                <h2 className="text-xl font-black text-slate-800 dark:text-white font-outfit">Оқу жоспары</h2>
+                <h2 className="text-xl font-black text-slate-800 dark:text-white font-outfit">Дайындық жоспары</h2>
                 <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mt-0.5">Барлық пәндер бойынша апталық кесте</p>
               </div>
            </div>
@@ -58,20 +73,46 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ onBack, allModules, user, onS
         </div>
 
         {/* Weeks Selection Tabs - Скриншот стилі */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 px-1">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setSelectedWeek(i + 1)}
-              className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
-                selectedWeek === (i + 1) 
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-lg' 
-                  : 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100'
-              }`}
-            >
-              Апта {i + 1} • {15 + i*7}.02
-            </button>
-          ))}
+        <div className="relative group flex items-center gap-2">
+          <button 
+            onClick={() => {
+              const el = document.getElementById('weeks-container');
+              if (el) el.scrollBy({ left: -200, behavior: 'smooth' });
+            }}
+            className="hidden md:flex w-8 h-8 items-center justify-center bg-white dark:bg-slate-800 rounded-full border border-gray-100 dark:border-slate-700 shadow-sm text-slate-400 hover:text-indigo-600 shrink-0"
+          >
+            <i className="fas fa-chevron-left text-[10px]"></i>
+          </button>
+
+          <div id="weeks-container" className="flex-1 flex gap-2 overflow-x-auto pb-4 px-1 scroll-smooth custom-scrollbar no-scrollbar md:scrollbar-auto">
+            {Array.from({ length: modules.length || 8 }).map((_, i) => (
+              <button
+                key={i}
+                id={`week-btn-${i+1}`}
+                onClick={() => setSelectedWeek(i + 1)}
+                className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border shrink-0 ${
+                  selectedWeek === (i + 1) 
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-lg' 
+                    : 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100'
+                }`}
+              >
+                Апта {i + 1}
+              </button>
+            ))}
+          </div>
+
+          <button 
+            onClick={() => {
+              const el = document.getElementById('weeks-container');
+              if (el) el.scrollBy({ left: 200, behavior: 'smooth' });
+            }}
+            className="hidden md:flex w-8 h-8 items-center justify-center bg-white dark:bg-slate-800 rounded-full border border-gray-100 dark:border-slate-700 shadow-sm text-slate-400 hover:text-indigo-600 shrink-0"
+          >
+            <i className="fas fa-chevron-right text-[10px]"></i>
+          </button>
+          
+          {/* Scroll Hint for mobile */}
+          <div className="absolute right-0 top-0 bottom-4 w-12 bg-gradient-to-l from-white dark:from-slate-900 to-transparent pointer-events-none md:hidden"></div>
         </div>
       </header>
 

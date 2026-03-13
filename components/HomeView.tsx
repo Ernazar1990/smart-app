@@ -157,12 +157,15 @@ const HomeView: React.FC<HomeViewProps> = ({ user, subjects, onSelectView, onSel
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           {subjects.map((sub) => {
             const isChosen = !sub.isElective || user.chosenElectives.includes(sub.id);
+            const isPaid = user.subscription === 'Free' || (user.activeSubjects || []).includes(sub.id);
+            const hasAccess = isChosen && isPaid;
+
             return (
               <button
                 key={sub.id}
                 onClick={() => onSelectSubject(sub.id)}
                 className={`bg-white dark:bg-slate-800 p-5 md:p-6 rounded-[28px] border dark:border-slate-700 shadow-sm flex flex-col items-center gap-4 hover:border-indigo-500 dark:hover:border-indigo-400 hover:shadow-md transition-all group relative overflow-hidden text-center ${
-                  isChosen ? 'border-emerald-500/20' : 'border-gray-50'
+                  hasAccess ? 'border-emerald-500/20' : 'border-gray-50 opacity-70'
                 }`}
               >
                 <div className={`w-14 h-14 md:w-16 md:h-16 bg-slate-50 dark:bg-slate-900 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-500`}>
@@ -172,21 +175,30 @@ const HomeView: React.FC<HomeViewProps> = ({ user, subjects, onSelectView, onSel
                 <div className="space-y-1">
                   <h3 className="font-black text-slate-800 dark:text-slate-100 text-xs md:text-sm font-outfit leading-tight">{sub.name}</h3>
                   <div className="flex flex-col gap-1 items-center">
-                    {isChosen ? (
+                    {hasAccess ? (
                       <span className="text-[7px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-lg uppercase tracking-widest">
-                        Таңдалған
+                        Қолжетімді
+                      </span>
+                    ) : !isPaid ? (
+                      <span className="text-[7px] font-black text-amber-600 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded-lg uppercase tracking-widest">
+                        Жазылым қажет
                       </span>
                     ) : (
                       <span className="text-[7px] font-black text-slate-400 bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded-lg uppercase tracking-widest">
-                        Шолу
+                        Таңдалмаған
                       </span>
                     )}
                   </div>
                 </div>
 
-                {isChosen && (
+                {hasAccess && (
                   <div className="absolute top-3 right-3 text-emerald-500 text-[10px]">
                     <i className="fas fa-check-circle"></i>
+                  </div>
+                )}
+                {!isPaid && (
+                  <div className="absolute top-3 right-3 text-amber-500 text-[10px]">
+                    <i className="fas fa-lock"></i>
                   </div>
                 )}
               </button>

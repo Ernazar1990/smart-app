@@ -2,15 +2,78 @@
 import React, { useState } from 'react';
 import { UserProgress } from '../types';
 import SkillRadar from './SkillRadar';
+import { supabase } from '../supabaseClient';
 
 interface ProfileViewProps {
   user: UserProgress;
   onLogout: () => void;
   onSelectView?: (view: any) => void;
+  onUpdateUser?: (user: UserProgress) => void;
 }
 
-const ProfileView: React.FC<ProfileViewProps> = ({ user, onLogout, onSelectView }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({ user, onLogout, onSelectView, onUpdateUser }) => {
   const [showHistory, setShowHistory] = useState(false);
+  const [activationCode, setActivationCode] = useState('');
+  const [isActivating, setIsActivating] = useState(false);
+  const [activationError, setActivationError] = useState('');
+
+  const handleActivatePremium = async () => {
+    if (activationCode.length !== 6) return;
+    setIsActivating(true);
+    setActivationError('');
+    try {
+      // Find user with this code
+      const { data: profile, error: profileError } = await supabase
+        .from('admin_users')
+        .select('*')
+        .eq('subscriptionCode', activationCode.toUpperCase())
+        .single();
+
+      if (profileError || !profile) {
+        setActivationError('Код қате немесе мерзімі өткен');
+        return;
+      }
+
+      // Check expiry
+      if (profile.subscriptionExpiresAt && new Date(profile.subscriptionExpiresAt) < new Date()) {
+        setActivationError('Жазылым мерзімі аяқталды');
+        return;
+      }
+
+      // If we found a profile with this code, it means this code is valid.
+      // In a real app, we'd probably link the current user to this premium status.
+      // For this app, we'll update the current user with the premium data from that code.
+      
+      const updatedUser = {
+        ...user,
+        subscription: profile.subscription || 'Premium',
+        subscriptionExpiresAt: profile.subscriptionExpiresAt,
+        activeSubjects: profile.activeSubjects || [],
+        subscriptionCode: profile.subscriptionCode
+      };
+
+      // Update in DB for the current user's email
+      const { error: updateError } = await supabase
+        .from('admin_users')
+        .update({
+          subscription: updatedUser.subscription,
+          subscriptionExpiresAt: updatedUser.subscriptionExpiresAt,
+          activeSubjects: updatedUser.activeSubjects,
+          subscriptionCode: updatedUser.subscriptionCode
+        })
+        .eq('email', user.email);
+
+      if (updateError) throw updateError;
+
+      onUpdateUser?.(updatedUser);
+      setActivationCode('');
+      alert('Premium статус сәтті белсендірілді!');
+    } catch (err: any) {
+      setActivationError('Белсендіру кезінде қате кетті');
+    } finally {
+      setIsActivating(false);
+    }
+  };
 
   // Mock data for the radar chart
   const radarData = [
@@ -42,6 +105,40 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onLogout, onSelectView 
   return (
     <div className="space-y-6 pb-24 animate-in fade-in duration-500">
       
+      {/* Premium Activation Section */}
+      {user.subscription !== 'Premium' && (
+        <div className="bg-white dark:bg-slate-800 p-8 rounded-[40px] border border-gray-100 dark:border-slate-700 shadow-sm space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600 text-2xl">
+              <i className="fas fa-key"></i>
+            </div>
+            <div className="text-left">
+              <h4 className="font-black text-slate-800 dark:text-white font-outfit">Premium белсендіру</h4>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">6 таңбалы кодты енгізіңіз</p>
+            </div>
+          </div>
+          
+          <div className="flex gap-3">
+            <input 
+              type="text" 
+              maxLength={6}
+              placeholder="000000"
+              className="flex-1 px-4 py-4 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-2xl text-center font-black text-xl tracking-[0.5em] outline-none focus:border-amber-500 transition-all"
+              value={activationCode}
+              onChange={e => setActivationCode(e.target.value.toUpperCase())}
+            />
+            <button 
+              onClick={handleActivatePremium}
+              disabled={isActivating || activationCode.length !== 6}
+              className="px-8 bg-amber-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:scale-105 transition-all disabled:opacity-50"
+            >
+              {isActivating ? '...' : 'Белсендіру'}
+            </button>
+          </div>
+          {activationError && <p className="text-red-500 text-[10px] font-bold text-center uppercase tracking-widest">{activationError}</p>}
+        </div>
+      )}
+
       {/* Admin Quick Access - Тек админ үшін */}
       {user.isAdmin && (
         <button 
@@ -122,7 +219,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onLogout, onSelectView 
           <i className="fas fa-user-graduate text-5xl text-emerald-600"></i>
         </div>
         <h3 className="text-2xl font-black text-gray-900 dark:text-white font-outfit">{user.name}</h3>
-        <p className="text-gray-400 dark:text-slate-500 text-sm mt-1 mb-6 font-outfit">{user.email || 'Пошта көрсетілмеген'}</p>
+        <p className="text-gray-400 dark:text-slate-500 text-sm mt-1 mb-4 font-outfit">{user.email || 'Пошта көрсетілмеген'}</p>
+        
+        {user.pin && (
+          <div className="mb-6 inline-block px-6 py-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-800">
+            <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Жылдам кіру коды (PIN)</p>
+            <p className="text-xl font-black text-indigo-600 dark:text-indigo-400 tracking-[0.2em] font-outfit">{user.pin}</p>
+          </div>
+        )}
         
         <div className="grid grid-cols-3 gap-2">
           {stats.map((stat, i) => (

@@ -28,6 +28,20 @@ const UNIS: University[] = [
   { id: 'satbayev', name: 'Қ.И. Сәтбаев атындағы Қазақ ұлттық техникалық зерттеу университеті', logo: 'https://logo.clearbit.com/satbayev.university', location: 'Алматы', region: 'Алматы қаласы', type: 'National', specialtiesCount: 25, minScore: 95, averagePrice: '1 300 000 ₸', hasDormitory: true, website: 'https://satbayev.university', address: 'Сәтбаев көшесі, 22', phone: '+7 (727) 257-71-32' },
   { id: 'kbtu', name: 'Қазақстан-Британ техникалық университеті (KBTU)', logo: 'https://logo.clearbit.com/kbtu.edu.kz', location: 'Алматы', region: 'Алматы қаласы', type: 'Private', specialtiesCount: 10, minScore: 115, averagePrice: '2 400 000 ₸', hasDormitory: true, website: 'https://kbtu.edu.kz', address: 'Төле би көшесі, 59', phone: '+7 (727) 357-42-42' },
   { id: 'iitu', name: 'Халықаралық ақпараттық технологиялар университеті (IITU)', logo: 'https://logo.clearbit.com/iitu.edu.kz', location: 'Алматы', region: 'Алматы қаласы', type: 'Private', specialtiesCount: 6, minScore: 112, averagePrice: '1 800 000 ₸', hasDormitory: true, website: 'https://iitu.edu.kz', address: 'Манас көшесі, 34/1', phone: '+7 (727) 244-51-01' },
+  { id: 'sdu', name: 'Сүлеймен Демирель атындағы Университет (SDU)', logo: 'https://logo.clearbit.com/sdu.edu.kz', location: 'Қаскелең', region: 'Алматы облысы', type: 'Private', specialtiesCount: 20, minScore: 100, averagePrice: '1 500 000 ₸', hasDormitory: true, website: 'https://sdu.edu.kz', address: 'Абылай хан көшесі, 1/1', phone: '+7 (727) 307-81-00' },
+  { id: 'kimep', name: 'КИМЭП Университеті', logo: 'https://logo.clearbit.com/kimep.kz', location: 'Алматы', region: 'Алматы қаласы', type: 'Private', specialtiesCount: 15, minScore: 110, averagePrice: '3 500 000 ₸', hasDormitory: true, website: 'https://kimep.kz', address: 'Абай даңғылы, 2', phone: '+7 (727) 270-42-13' },
+  { id: 'narxoz', name: 'Нархоз Университеті', logo: 'https://logo.clearbit.com/narxoz.kz', location: 'Алматы', region: 'Алматы қаласы', type: 'Private', specialtiesCount: 18, minScore: 85, averagePrice: '1 200 000 ₸', hasDormitory: true, website: 'https://narxoz.kz', address: 'Жандосов көшесі, 55', phone: '+7 (727) 377-11-11' },
+  { id: 'kaznmu', name: 'С.Ж. Асфендияров атындағы Қазақ ұлттық медицина университеті', logo: 'https://logo.clearbit.com/kaznmu.kz', location: 'Алматы', region: 'Алматы қаласы', type: 'National', specialtiesCount: 5, minScore: 128, averagePrice: '1 600 000 ₸', hasDormitory: true, website: 'https://kaznmu.kz', address: 'Төле би көшесі, 94', phone: '+7 (727) 338-70-90' },
+  { id: 'kaznpu', name: 'Абай атындағы Қазақ ұлттық педагогикалық университеті', logo: 'https://logo.clearbit.com/kaznpu.kz', location: 'Алматы', region: 'Алматы қаласы', type: 'National', specialtiesCount: 35, minScore: 75, averagePrice: '850 000 ₸', hasDormitory: true, website: 'https://kaznpu.kz', address: 'Достық даңғылы, 13', phone: '+7 (727) 291-56-74' },
+  { id: 'karu', name: 'Е.А. Бөкетов атындағы Қарағанды университеті', logo: 'https://logo.clearbit.com/buketov.edu.kz', location: 'Қарағанды', region: 'Қарағанды облысы', type: 'State', specialtiesCount: 40, minScore: 70, averagePrice: '750 000 ₸', hasDormitory: true, website: 'https://buketov.edu.kz', address: 'Университетская көшесі, 28', phone: '+7 (7212) 77-03-84' },
+  { id: 'sku', name: 'М. Әуезов атындағы Оңтүстік Қазақстан университеті', logo: 'https://logo.clearbit.com/auezov.edu.kz', location: 'Шымкент', region: 'Шымкент қаласы', type: 'State', specialtiesCount: 45, minScore: 70, averagePrice: '700 000 ₸', hasDormitory: true, website: 'https://auezov.edu.kz', address: 'Тәуке хан даңғылы, 5', phone: '+7 (7252) 21-01-41' },
+  { id: 'psu', name: 'С. Торайғыров атындағы Павлодар мемлекеттік университеті', logo: 'https://logo.clearbit.com/tou.edu.kz', location: 'Павлодар', region: 'Павлодар облысы', type: 'State', specialtiesCount: 38, minScore: 65, averagePrice: '650 000 ₸', hasDormitory: true, website: 'https://tou.edu.kz', address: 'Ломов көшесі, 64', phone: '+7 (7182) 67-36-85' },
+  { id: 'kou', name: 'А. Байтұрсынов атындағы Қостанай өңірлік университеті', logo: 'https://logo.clearbit.com/ksu.edu.kz', location: 'Қостанай', region: 'Қостанай облысы', type: 'State', specialtiesCount: 32, minScore: 65, averagePrice: '600 000 ₸', hasDormitory: true, website: 'https://ksu.edu.kz', address: 'Абай даңғылы, 28', phone: '+7 (7142) 51-11-95' },
+  { id: 'aru', name: 'Қ. Жұбанов атындағы Ақтөбе өңірлік университеті', logo: 'https://logo.clearbit.com/arsu.kz', location: 'Ақтөбе', region: 'Ақтөбе облысы', type: 'State', specialtiesCount: 30, minScore: 65, averagePrice: '600 000 ₸', hasDormitory: true, website: 'https://arsu.kz', address: 'Ағайынды Жұбановтар көшесі, 263', phone: '+7 (7132) 54-42-42' },
+  { id: 'wksu', name: 'М. Өтемісов атындағы Батыс Қазақстан университеті', logo: 'https://logo.clearbit.com/wksu.kz', location: 'Орал', region: 'Батыс Қазақстан облысы', type: 'State', specialtiesCount: 28, minScore: 65, averagePrice: '550 000 ₸', hasDormitory: true, website: 'https://wksu.kz', address: 'Достық даңғылы, 162', phone: '+7 (7112) 50-41-51' },
+  { id: 'asu', name: 'Х. Досмұхамедов атындағы Атырау университеті', logo: 'https://logo.clearbit.com/asu.edu.kz', location: 'Атырау', region: 'Атырау облысы', type: 'State', specialtiesCount: 25, minScore: 65, averagePrice: '550 000 ₸', hasDormitory: true, website: 'https://asu.edu.kz', address: 'Студенттер даңғылы, 1', phone: '+7 (7122) 27-63-23' },
+  { id: 'yessenov', name: 'Ш. Есенов атындағы Каспий технологиялар және инжиниринг университеті', logo: 'https://logo.clearbit.com/yu.edu.kz', location: 'Ақтау', region: 'Маңғыстау облысы', type: 'State', specialtiesCount: 22, minScore: 65, averagePrice: '500 000 ₸', hasDormitory: true, website: 'https://yu.edu.kz', address: '32-шағын аудан', phone: '+7 (7292) 42-57-03' },
+  { id: 'korkyt', name: 'Қорқыт Ата атындағы Қызылорда университеті', logo: 'https://logo.clearbit.com/korkyt.kz', location: 'Қызылорда', region: 'Қызылорда облысы', type: 'State', specialtiesCount: 26, minScore: 65, averagePrice: '500 000 ₸', hasDormitory: true, website: 'https://korkyt.kz', address: 'Әйтеке би көшесі, 29А', phone: '+7 (7242) 26-22-24' },
 ];
 
 const SPECIALTIES_DB: Specialty[] = [
@@ -79,8 +93,17 @@ const UniListView: React.FC<UniListViewProps> = ({ user }) => {
           supabase.from('specialties').select('*').order('name')
         ]);
         
-        if (unisRes.data) setUnis(unisRes.data);
-        if (specsRes.data) setSpecialties(specsRes.data);
+        if (unisRes.data && unisRes.data.length > 0) {
+          setUnis(unisRes.data);
+        } else {
+          setUnis(UNIS);
+        }
+        
+        if (specsRes.data && specsRes.data.length > 0) {
+          setSpecialties(specsRes.data);
+        } else {
+          setSpecialties(SPECIALTIES_DB);
+        }
       } catch (err) {
         console.error("Error fetching data:", err);
       } finally {
@@ -254,6 +277,60 @@ const UniListView: React.FC<UniListViewProps> = ({ user }) => {
           </button>
         ))}
       </div>
+
+      {activeTab === 'regions' && (
+        <div className="space-y-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-[35px] border border-gray-100 dark:border-slate-700 shadow-sm space-y-4">
+            <h3 className="font-black text-slate-800 dark:text-white text-sm uppercase tracking-widest px-2">Аймақтар бойынша сүзу</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {REGIONS.map(reg => (
+                <button
+                  key={reg}
+                  onClick={() => toggleRegion(reg)}
+                  className={`flex items-center justify-between p-3 rounded-2xl border transition-all text-left ${
+                    selectedRegions.includes(reg)
+                    ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 text-emerald-700 dark:text-emerald-400'
+                    : 'bg-gray-50 dark:bg-slate-900/50 border-transparent text-slate-500'
+                  }`}
+                >
+                  <span className="text-[10px] font-bold">{reg}</span>
+                  {selectedRegions.includes(reg) && <i className="fas fa-check-circle text-xs"></i>}
+                </button>
+              ))}
+            </div>
+            {selectedRegions.length > 0 && (
+              <button 
+                onClick={() => setSelectedRegions([])}
+                className="w-full py-3 text-slate-400 text-[10px] font-black uppercase tracking-widest hover:text-red-500 transition-colors"
+              >
+                Сүзгіні тазалау
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="font-black text-slate-400 text-[10px] font-black uppercase tracking-widest px-4">Нәтижелер ({filteredUnis.length})</h3>
+            <div className="grid grid-cols-1 gap-3">
+              {filteredUnis.map(uni => (
+                <button 
+                  key={uni.id}
+                  onClick={() => setSelectedUni(uni)}
+                  className="bg-white dark:bg-slate-800 p-3 rounded-[25px] border border-gray-100 dark:border-slate-700 shadow-sm flex items-center gap-4 text-left hover:border-emerald-500 transition-all group"
+                >
+                  <div className="w-14 h-14 bg-gray-50 dark:bg-slate-900 p-2 rounded-2xl flex items-center justify-center border border-gray-100 dark:border-slate-700 shrink-0 overflow-hidden">
+                    <UniLogoImage uni={uni} className="max-h-full max-w-full" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-black text-gray-900 dark:text-white text-xs leading-snug line-clamp-2 font-outfit">{uni.name}</h4>
+                    <span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">{uni.location}</span>
+                  </div>
+                  <i className="fas fa-chevron-right text-gray-200 dark:text-slate-700 px-1 group-hover:translate-x-1 transition-transform text-[10px]"></i>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeTab === 'all' && (
          <div className="space-y-4 animate-in fade-in">
