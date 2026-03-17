@@ -59,15 +59,11 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
         setError('Құпия сөз кемі 6 таңбадан тұруы керек');
         return;
       }
-      setStep(4);
+      handleFinalize(); // ПИН-кодсыз бірден аяқтау
     }
   };
 
   const handleFinalize = async () => {
-    if (formData.pin.length !== 4) {
-      setError('4 таңбалы ПИН-кодты енгізіңіз');
-      return;
-    }
     setLoading(true);
     setError('');
     try {
@@ -89,7 +85,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
         points: 0,
         xp: 0,
         subscription: 'Free',
-        pin: formData.pin, // Save PIN for quick login
+        pin: '', // ПИН-код бос болады
         role: 'student',
         completedLessons: [],
         chosenElectives: formData.electives === 'creative' ? ['creative'] : formData.electives.split('-')
@@ -98,7 +94,6 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
       const { error: profileError } = await supabase.from('admin_users').upsert([finalData]);
       if (profileError) throw profileError;
 
-      localStorage.setItem('smart_user_pin', formData.pin);
       localStorage.setItem('smart_user_name', formData.name);
       localStorage.setItem('smart_last_email', formData.email);
       
@@ -443,7 +438,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
               <i className="fas fa-arrow-left"></i> Артқа
             </button>
             <div className="flex justify-between mb-4">
-              {[1, 2, 3, 4].map(i => (
+              {[1, 2, 3].map(i => (
                 <div key={i} className={`h-1.5 flex-1 mx-1 rounded-full ${step >= i ? 'bg-emerald-600' : 'bg-gray-100'}`}></div>
               ))}
             </div>
@@ -466,17 +461,11 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
                 <input type="password" placeholder="Құпия сөзді растау" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 rounded-2xl shadow-sm font-bold" value={formData.passConfirm} onChange={e => setFormData({...formData, passConfirm: e.target.value})} />
               </div>
             )}
-            {step === 4 && (
-              <div className="space-y-4 text-center animate-in zoom-in">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Кіру үшін ПИН-код орнатыңыз</p>
-                <input type="text" maxLength={4} placeholder="0000" className="w-40 mx-auto p-5 bg-emerald-50 rounded-[30px] text-center text-4xl font-black tracking-[0.3em] outline-none text-emerald-700 focus:border-emerald-500 transition-all font-outfit" onChange={e => setFormData({...formData, pin: e.target.value})} />
-              </div>
-            )}
             {error && <p className="text-red-500 text-[10px] font-bold text-center uppercase tracking-widest">{error}</p>}
             <div className="flex gap-3">
               {step > 1 && <button onClick={() => setStep(step - 1)} className="flex-1 bg-gray-100 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-gray-500">Артқа</button>}
-              <button onClick={step === 4 ? handleFinalize : handleRegisterNext} disabled={loading} className="flex-[2] bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-lg font-outfit disabled:opacity-50">
-                {loading ? 'Жүктелуде...' : (step === 4 ? 'Аяқтау' : 'Келесі')}
+              <button onClick={handleRegisterNext} disabled={loading} className="flex-[2] bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-lg font-outfit disabled:opacity-50">
+                {loading ? 'Жүктелуде...' : (step === 3 ? 'Аяқтау' : 'Келесі')}
               </button>
             </div>
           </div>

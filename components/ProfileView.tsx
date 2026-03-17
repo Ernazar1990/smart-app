@@ -219,6 +219,20 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onLogout, onSelectView,
           <i className="fas fa-user-graduate text-5xl text-emerald-600"></i>
         </div>
         <h3 className="text-2xl font-black text-gray-900 dark:text-white font-outfit">{user.name}</h3>
+        <div className="flex justify-center gap-2 mb-4">
+          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+            user.role === 'super-admin' ? 'bg-indigo-100 text-indigo-600' :
+            user.role === 'teacher' ? 'bg-emerald-100 text-emerald-600' :
+            'bg-gray-100 text-gray-600'
+          }`}>
+            {user.role === 'super-admin' ? 'Админ' : user.role === 'teacher' ? 'Куратор' : 'Оқушы'}
+          </span>
+          {user.subscription !== 'none' && (
+            <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-100 text-amber-600">
+              {user.subscription}
+            </span>
+          )}
+        </div>
         <p className="text-gray-400 dark:text-slate-500 text-sm mt-1 mb-4 font-outfit">{user.email || 'Пошта көрсетілмеген'}</p>
         
         {user.pin && (

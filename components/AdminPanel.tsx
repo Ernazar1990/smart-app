@@ -199,9 +199,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const fetchStudents = async () => {
     try {
       const { data, error } = await supabase.from('admin_users').select('*').order('points', { ascending: false });
-      if (!error && data) setStudents(data);
+      if (error) throw error;
+      if (data) setStudents(data);
     } catch (err) {
       console.error("Error fetching students:", err);
+      // Don't alert here to avoid annoying popups, but maybe log it
     }
   };
 
@@ -429,13 +431,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleSaveStaff = async () => {
-    if (!editingStaff?.name || !editingStaff?.email) return;
+    if (!editingStaff?.name) {
+      alert('Аты-жөнін енгізіңіз');
+      return;
+    }
+    if (!editingStaff?.email) {
+      alert('Email енгізіңіз');
+      return;
+    }
+    
     setIsSaving(true);
     try {
       const newStaff = { ...editingStaff, role: editingStaff.role || 'teacher', permissions: editingStaff.permissions || [] } as StaffMember;
       
       // Try to check if staff exists first to decide between insert and update
-      // This can sometimes bypass certain RLS issues with upsert
       const { data: existing } = await supabase.from('staff').select('email').eq('email', newStaff.email).maybeSingle();
       
       let error;
@@ -447,19 +456,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         error = insertError;
       }
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '42501') {
+          alert('Supabase RLS қатесі: Қызметкерлерді қосуға рұқсат жоқ. SQL Editor-да RLS саясаттарын орнатыңыз.');
+          return;
+        }
+        throw error;
+      }
       
-      setStaffList(prev => {
-        const exists = prev.find(s => s.email === newStaff.email);
-        if (exists) return prev.map(s => s.email === newStaff.email ? newStaff : s);
-        return [...prev, newStaff];
-      });
+      // Refresh staff list from parent if possible, or update local
+      if (setStaffList) {
+        setStaffList(prev => {
+          const exists = prev.find(s => s.email === newStaff.email);
+          if (exists) return prev.map(s => s.email === newStaff.email ? newStaff : s);
+          return [...prev, newStaff];
+        });
+      }
+      
       setShowStaffModal(false);
       setEditingStaff(null);
       alert('Қызметкер сақталды!');
     } catch (err) {
       console.error("Error saving staff:", err);
-      alert('Қате орын алды: ' + (err as any).message + '\n\nЕскерту: Supabase-те "staff" кестесіне RLS саясатын (Policy) қосу қажет болуы мүмкін.');
+      alert('Қате орын алды: ' + (err as any).message);
     } finally {
       setIsSaving(false);
     }
@@ -706,6 +725,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     <div className="flex flex-col min-h-screen bg-[#F8FAFC] dark:bg-[#0F172A] -m-4 md:-m-10">
       <main className="flex-1 p-6">
         <div className="max-w-7xl mx-auto">
+          <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+            <div>
+              <h2 className="text-3xl font-black font-outfit text-slate-800 dark:text-white">Сәлем, {user.name}!</h2>
+              <div className="flex items-center gap-2 mt-2">
+                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                  isSuperAdmin ? 'bg-indigo-100 text-indigo-600' : 'bg-emerald-100 text-emerald-600'
+                }`}>
+                  {isSuperAdmin ? 'Бас Админ' : 'Куратор'}
+                </span>
+                <div className="flex items-center gap-1.5 ml-2">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Жүйе белсенді</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={async () => {
+                  await refreshData();
+                  alert('Деректер жаңартылды!');
+                }}
+                className="px-6 py-3 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:shadow-md transition-all"
+              >
+                <i className="fas fa-sync-alt mr-2"></i>
+                Жаңарту
+              </button>
+              <button onClick={() => setView('home')} className="px-6 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-200 dark:shadow-none hover:scale-105 transition-all">
+                Оқу режимі
+              </button>
+            </div>
+          </header>
+
           {activeSubTab === 'home' && (
             <div className="bg-white dark:bg-slate-800 p-8 rounded-[40px] border border-gray-100 dark:border-slate-700 shadow-sm space-y-8 animate-in fade-in">
                 <div className="flex justify-between items-center">
@@ -776,6 +827,103 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
               </div>
+
+              {isSuperAdmin && (
+                <div className="mt-12 p-8 bg-slate-900 rounded-[40px] border border-slate-800 text-white space-y-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-xl">
+                      <i className="fas fa-database"></i>
+                    </div>
+                    <div>
+                      <h4 className="font-black font-outfit">Деректер базасын баптау (RLS)</h4>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Егер "Row-Level Security" қатесі шықса</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                    <p className="text-[10px] text-slate-400 mb-3 leading-relaxed">
+                      Supabase SQL Editor-ға төмендегі кодты көшіріп басыңыз. Бұл кестелерді құрып, қажетті бағандарды қосады және RLS рұқсатын береді:
+                    </p>
+                    <pre className="text-[9px] font-mono text-indigo-300 overflow-x-auto p-2 bg-black/30 rounded-lg">
+{`-- 1. Кестелерді құру және бағандарды қосу
+CREATE TABLE IF NOT EXISTS admin_users (
+  email TEXT PRIMARY KEY,
+  name TEXT,
+  phone TEXT,
+  class TEXT,
+  region TEXT,
+  school TEXT,
+  pin TEXT,
+  points INTEGER DEFAULT 0,
+  xp INTEGER DEFAULT 0,
+  level INTEGER DEFAULT 1,
+  streak INTEGER DEFAULT 0,
+  subscription TEXT DEFAULT 'Free',
+  subscriptionCode TEXT,
+  activationCode TEXT,
+  subscriptionExpiresAt TIMESTAMP WITH TIME ZONE,
+  role TEXT DEFAULT 'student',
+  completedLessons JSONB DEFAULT '[]',
+  chosenElectives JSONB DEFAULT '[]',
+  permissions JSONB DEFAULT '[]',
+  marathon JSONB DEFAULT '{"isActive": false, "duration": 7, "startDate": "", "completedDays": [], "currentStreak": 0}'
+);
+
+-- Жетіспейтін бағандарды қосу (егер кесте бар болса)
+ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS points INTEGER DEFAULT 0;
+ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS activationCode TEXT;
+ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS subscriptionCode TEXT;
+ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0;
+ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS marathon JSONB DEFAULT '{"isActive": false, "duration": 7, "startDate": "", "completedDays": [], "currentStreak": 0}';
+
+CREATE TABLE IF NOT EXISTS staff (
+  email TEXT PRIMARY KEY,
+  name TEXT,
+  role TEXT DEFAULT 'teacher',
+  permissions JSONB DEFAULT '[]'
+);
+
+CREATE TABLE IF NOT EXISTS news (
+  id TEXT PRIMARY KEY,
+  title TEXT,
+  content TEXT,
+  date TEXT,
+  image TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS home_config (
+  id TEXT PRIMARY KEY,
+  config JSONB
+);
+
+CREATE TABLE IF NOT EXISTS config (
+  id TEXT PRIMARY KEY,
+  value JSONB
+);
+
+-- 2. RLS рұқсатын беру
+ALTER TABLE staff ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE news ENABLE ROW LEVEL SECURITY;
+ALTER TABLE home_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE config ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Full access staff" ON staff;
+DROP POLICY IF EXISTS "Full access admin_users" ON admin_users;
+DROP POLICY IF EXISTS "Full access news" ON news;
+DROP POLICY IF EXISTS "Full access home_config" ON home_config;
+DROP POLICY IF EXISTS "Full access config" ON config;
+
+CREATE POLICY "Full access staff" ON staff FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Full access admin_users" ON admin_users FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Full access news" ON news FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Full access home_config" ON home_config FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Full access config" ON config FOR ALL USING (true) WITH CHECK (true);`}
+                    </pre>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -933,6 +1081,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                <div className="flex justify-between items-center mb-6">
                   <h3 className="text-lg font-black font-outfit">Оқушылар мониторингі</h3>
                   <div className="flex gap-3">
+                    <button 
+                      onClick={fetchStudents} 
+                      className="w-10 h-10 bg-gray-50 dark:bg-slate-900 border border-gray-100 dark:border-slate-700 rounded-xl flex items-center justify-center text-gray-400 hover:text-indigo-600 transition-all"
+                      title="Жаңарту"
+                    >
+                      <i className="fas fa-sync-alt text-xs"></i>
+                    </button>
                     {students.length <= 2 && (
                       <button onClick={seedInitialUsers} className="bg-emerald-100 text-emerald-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-200 transition-all">Бастапқы оқушылар</button>
                     )}
@@ -1783,12 +1938,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
             <div className="flex gap-3 mt-10">
-              <button onClick={() => setShowStaffModal(false)} className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-slate-500 hover:bg-gray-200 transition-all">Артқа қайту</button>
+              <button 
+                onClick={() => setShowStaffModal(false)} 
+                disabled={isSaving}
+                className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-gray-100 text-slate-500 hover:bg-gray-200 transition-all disabled:opacity-50"
+              >
+                Артқа қайту
+              </button>
               <button 
                 onClick={handleSaveStaff} 
-                className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white shadow-xl hover:bg-indigo-700 transition-all"
+                disabled={isSaving}
+                className="flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white shadow-xl hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Растау
+                {isSaving ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i>
+                    Сақталуда...
+                  </>
+                ) : 'Растау'}
               </button>
             </div>
           </div>

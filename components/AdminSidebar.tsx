@@ -10,13 +10,13 @@ interface AdminSidebarProps {
 }
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setView, userRole, userEmail }) => {
-  const isSuperAdmin = userEmail === 'nur.abuuadi@gmail.com';
+  const isSuperAdmin = userRole === 'super-admin' || userEmail === 'nur.abuuadi@gmail.com';
 
   const adminMenuItems = [
     { id: 'admin-home', icon: 'fa-home', label: 'Басты бет', superOnly: true },
     { id: 'admin-content', icon: 'fa-book-open', label: 'Сабақтар', superOnly: false },
     { id: 'admin-news', icon: 'fa-rss', label: 'Жаңалықтар', superOnly: true },
-    { id: 'admin-users', icon: 'fa-users', label: 'Оқушылар', superOnly: true },
+    { id: 'admin-users', icon: 'fa-users', label: 'Оқушылар', superOnly: false },
     { id: 'admin-staff', icon: 'fa-user-tie', label: 'Қызметкерлер', superOnly: true },
     { id: 'admin-unis', icon: 'fa-university', label: 'ЖОО', superOnly: true },
     { id: 'admin-ai', icon: 'fa-robot', label: 'AI Hub', superOnly: true },
