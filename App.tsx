@@ -29,14 +29,17 @@ import CareerAdvisorView from './components/CareerAdvisorView';
 import RoadmapView from './components/RoadmapView';
 import TournamentView from './components/TournamentView';
 import TestView from './components/TestView';
-import { motion } from 'motion/react';
+import WeeklyTestView from './components/WeeklyTestView';
+import { motion, AnimatePresence } from 'motion/react';
 import { AppView, UserProgress, Lesson, Module, StaffMember, UserMarathon, NewsItem, SubscriptionConfig } from './types';
 import { SUBJECTS, MODULES_BY_SUBJECT } from './constants';
 import { supabase } from './supabaseClient';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentView, setCurrentView] = useState<AppView>('home');
+
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -97,6 +100,120 @@ const App: React.FC = () => {
     }
   };
 
+  // Streak Modal & Logic States
+  const [showStreakModal, setShowStreakModal] = useState(false);
+  const [streakRewardInfo, setStreakRewardInfo] = useState<{ newStreak: number; points: number; xp: number } | null>(null);
+
+  const getTodayDateString = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const getYesterdayDateString = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const checkDailyLoginStreak = async (currentUser: UserProgress) => {
+    if (!currentUser || !currentUser.email) return;
+    
+    const todayStr = getTodayDateString();
+    const yesterdayStr = getYesterdayDateString();
+    
+    const lastActiveDate = (currentUser as any).lastActiveDate || localStorage.getItem(`smart_user_last_active_${currentUser.email}`) || '';
+    const lastLoginDate = (currentUser as any).lastLoginDate || localStorage.getItem(`smart_user_last_login_${currentUser.email}`) || '';
+    
+    if (lastLoginDate === todayStr) {
+      return;
+    }
+
+    let updatedStreak = currentUser.streak ?? 0;
+
+    // If they missed yesterday AND missed today, reset streak to 0
+    if (lastActiveDate && lastActiveDate !== yesterdayStr && lastActiveDate !== todayStr) {
+      updatedStreak = 0;
+    }
+
+    const updatedUser = {
+      ...currentUser,
+      streak: updatedStreak,
+      lastLoginDate: todayStr,
+      lastActiveDate: lastActiveDate
+    } as any;
+
+    setUser(updatedUser);
+    localStorage.setItem('smart_user_session', JSON.stringify(updatedUser));
+    localStorage.setItem(`smart_user_last_login_${currentUser.email}`, todayStr);
+    if (lastActiveDate) {
+      localStorage.setItem(`smart_user_last_active_${currentUser.email}`, lastActiveDate);
+    }
+
+    try {
+      await supabase
+        .from('admin_users')
+        .update({ 
+          streak: updatedStreak
+        })
+        .eq('email', currentUser.email);
+    } catch (err) {
+      console.warn("Could not sync streak reset to Supabase:", err);
+    }
+  };
+
+  const handleAnswerQuestion = async () => {
+    if (!isLoggedIn || !user || !user.email) return;
+
+    const todayStr = getTodayDateString();
+    const yesterdayStr = getYesterdayDateString();
+
+    const lastActiveDate = (user as any).lastActiveDate || localStorage.getItem(`smart_user_last_active_${user.email}`) || '';
+
+    if (lastActiveDate === todayStr) {
+      return;
+    }
+
+    let newStreak = 1;
+    if (lastActiveDate === yesterdayStr) {
+      newStreak = (user.streak || 0) + 1;
+    }
+
+    const pointsReward = 25;
+    const xpReward = 100;
+
+    const updatedUser = {
+      ...user,
+      streak: newStreak,
+      points: user.points + pointsReward,
+      xp: (user.xp || 0) + xpReward,
+      lastActiveDate: todayStr
+    } as any;
+
+    setUser(updatedUser);
+    localStorage.setItem('smart_user_session', JSON.stringify(updatedUser));
+    localStorage.setItem(`smart_user_last_active_${user.email}`, todayStr);
+
+    setStreakRewardInfo({
+      newStreak,
+      points: pointsReward,
+      xp: xpReward
+    });
+    setShowStreakModal(true);
+
+    try {
+      await supabase
+        .from('admin_users')
+        .update({ 
+          streak: newStreak,
+          points: updatedUser.points,
+          xp: updatedUser.xp
+        })
+        .eq('email', user.email);
+    } catch (err) {
+      console.warn("Could not sync streak reward to Supabase:", err);
+    }
+  };
+
   // Supabase-тен деректерді жүктеу
   useEffect(() => {
     const fetchData = async () => {
@@ -129,12 +246,21 @@ const App: React.FC = () => {
           try {
             const parsedSession = JSON.parse(savedSession);
             const email = parsedSession.email?.toLowerCase().trim();
+            
+            // Refresh profile from Supabase to get latest subscription/points
+            const { data: profile, error: pError } = await supabase
+              .from('admin_users')
+              .select('*')
+              .eq('email', email)
+              .maybeSingle();
+            
             const staff = currentStaffList.find(s => s.email.toLowerCase() === email);
-            const isOwner = email === 'nur.abuuadi@gmail.com';
+            const isOwner = email === 'nur.abuuadi@gmail.com' || email === 'ernazarnurtay@gmail.com';
             const isAdmin = !!staff || isOwner;
             
             const updatedUser = {
               ...parsedSession,
+              ...(profile || {}),
               isAdmin,
               role: isOwner ? 'super-admin' : (staff?.role || 'student'),
               permissions: isOwner ? ['all'] : (staff?.permissions || [])
@@ -143,18 +269,16 @@ const App: React.FC = () => {
             setUser(updatedUser);
             setIsLoggedIn(true);
             localStorage.setItem('smart_user_session', JSON.stringify(updatedUser));
+            checkDailyLoginStreak(updatedUser);
           } catch (e) {
             localStorage.removeItem('smart_user_session');
           }
         }
       } catch (err: any) {
         console.warn("Supabase integration failed:", err.message);
-        if (err.message === 'Failed to fetch') {
-          if (retryCount < 2) {
-            setTimeout(() => setRetryCount(prev => prev + 1), 2000);
-          } else {
-            setConnectionError('Серверге қосылу мүмкін емес. Supabase жобасы тоқтатылған (Paused) болуы мүмкін. Dashboard-тан "Resume" батырмасын басыңыз.');
-          }
+        // "Failed to fetch" кезінде қолданушыға қатты қате көрсетпеу, себебі статикалық деректер бар
+        if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+          console.debug("Offline or blocked connection to Supabase detected.");
         }
       } finally {
         setIsLoading(false);
@@ -166,8 +290,9 @@ const App: React.FC = () => {
   // Global error listener for network issues
   useEffect(() => {
     const handleRejection = (event: PromiseRejectionEvent) => {
+      // "Failed to fetch" can be benign (blocked trackers, etc), so we just log it
       if (event.reason?.message === 'Failed to fetch') {
-        setConnectionError('Желілік қате: Серверге қосылу мүмкін емес.');
+        console.debug('Global unhandled fetch rejection caught');
       }
     };
     const handleOnline = () => {
@@ -211,6 +336,7 @@ const App: React.FC = () => {
     setUser(newUser);
     setIsLoggedIn(true);
     localStorage.setItem('smart_user_session', JSON.stringify(newUser));
+    checkDailyLoginStreak(newUser);
   };
 
   const updateSubjects = async (subjects: string[]) => {
@@ -255,6 +381,29 @@ const App: React.FC = () => {
     }
   };
 
+  const handleWeeklyTestComplete = async (score: number, totalPoints: number) => {
+    const xpGain = score * 2;
+    const updatedUser = {
+      ...user,
+      points: user.points + score,
+      xp: (user.xp || 0) + xpGain
+    };
+    setUser(updatedUser);
+    localStorage.setItem('smart_user_session', JSON.stringify(updatedUser));
+
+    try {
+      await supabase
+        .from('admin_users')
+        .update({ 
+          points: updatedUser.points,
+          xp: updatedUser.xp
+        })
+        .eq('email', user.email);
+    } catch (err) {
+      console.error('Failed to update rating in Supabase:', err);
+    }
+  };
+
   const renderContent = () => {
     if (isLoading) return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
@@ -274,6 +423,7 @@ const App: React.FC = () => {
               setSelectedLesson(null);
             }} 
             onClose={() => setSelectedLesson(null)}
+            onAnswerQuestion={handleAnswerQuestion}
           />
         );
       }
@@ -287,6 +437,7 @@ const App: React.FC = () => {
             setSelectedLesson(null);
             setCurrentView(view);
           }}
+          onAnswerQuestion={handleAnswerQuestion}
         />
       );
     }
@@ -294,10 +445,25 @@ const App: React.FC = () => {
     switch (currentView) {
       case 'home': return <HomeView user={user} subjects={SUBJECTS} onSelectView={setCurrentView} onSelectSubject={(id) => { setSelectedSubjectId(id); setCurrentView('roadmap'); }} homeConfig={homeConfig} news={news} />;
       case 'module-list': return <ModuleList user={user} onSelectLesson={setSelectedLesson} modules={selectedSubjectId ? (allModules[selectedSubjectId] || []) : []} subjects={SUBJECTS} selectedSubjectId={selectedSubjectId} onSelectSubject={setSelectedSubjectId} />;
+      case 'weekly-test': {
+        const primarySubjectId = user.chosenElectives[0] || 'chem';
+        const subject = SUBJECTS.find(s => s.id === primarySubjectId) || SUBJECTS[0];
+        const topics = (allModules[primarySubjectId] || []).slice(0, 3).map(m => m.title);
+        return (
+          <WeeklyTestView 
+            subjectId={primarySubjectId}
+            subjectName={subject.name}
+            topics={topics.length > 0 ? topics : ['Жалпы курс мазмұны']}
+            onComplete={handleWeeklyTestComplete}
+            onClose={() => setCurrentView('home')}
+            onAnswerQuestion={handleAnswerQuestion}
+          />
+        );
+      }
       case 'ai-tools-hub': return <AIToolsHub onSelectView={setCurrentView} />;
       case 'profile': return <ProfileView user={user} onLogout={() => setIsLoggedIn(false)} onSelectView={setCurrentView} onUpdateUser={setUser} />;
       case 'uni-list': return <UniListView user={user} />;
-      case 'subscription': return <SubscriptionView config={subscriptionConfig} user={user} onUpdateUser={setUser} onBack={() => setCurrentView('profile')} />;
+      case 'subscription': return <SubscriptionView config={subscriptionConfig} user={user} onUpdateUser={setUser} onBack={() => setCurrentView('profile')} onRefresh={refreshData} />;
       case 'rating': return <RatingView user={user} onBack={() => setCurrentView('profile')} />;
       case 'marathon': return <MarathonView user={user} onUpdateMarathon={(m) => setUser({...user, marathon: m})} />;
       case 'subject-selection': return <SubjectSelectionView user={user} onUpdateSubjects={updateSubjects} onClose={() => setCurrentView('home')} />;
@@ -311,11 +477,11 @@ const App: React.FC = () => {
       case 'glossary': return <GlossaryView onBack={() => setCurrentView('ai-tools-hub')} />;
       case 'reaction-balancer': return <ReactionBalancer onBack={() => setCurrentView('ai-tools-hub')} />;
       case 'flashcards': return <Flashcards onBack={() => setCurrentView('ai-tools-hub')} />;
-      case 'arena': return <ArenaView onBack={() => setCurrentView('ai-tools-hub')} />;
+      case 'arena': return <ArenaView onBack={() => setCurrentView('ai-tools-hub')} onAnswerQuestion={handleAnswerQuestion} />;
       case 'career-advisor': return <CareerAdvisorView onBack={() => setCurrentView('ai-tools-hub')} />;
       case 'roadmap': return <RoadmapView onBack={() => setCurrentView('home')} allModules={allModules} user={user} onSelectLesson={setSelectedLesson} subjects={SUBJECTS} initialSubjectId={selectedSubjectId} />;
-      case 'tournament': return <TournamentView onBack={() => setCurrentView('home')} />;
-      case 'test': return <TestView selectedSubjects={user.chosenElectives} onComplete={(s) => setUser({...user, points: user.points + s})} />;
+      case 'tournament': return <TournamentView onBack={() => setCurrentView('home')} onAnswerQuestion={handleAnswerQuestion} />;
+      case 'test': return <TestView selectedSubjects={user.chosenElectives} onComplete={(s) => setUser({...user, points: user.points + s})} onAnswerQuestion={handleAnswerQuestion} />;
       case 'admin':
       case 'admin-content':
       case 'admin-news':
@@ -325,6 +491,7 @@ const App: React.FC = () => {
       case 'admin-unis':
       case 'admin-ai':
       case 'admin-subscription':
+      case 'admin-system':
         return (
           <AdminPanel 
             currentView={currentView} 
@@ -349,62 +516,133 @@ const App: React.FC = () => {
 
   return (
     <div className={isDarkMode ? 'dark' : ''}>
-      {isOffline && (
-        <div className="fixed top-0 left-0 right-0 z-[250] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest py-2 text-center">
-          <i className="fas fa-wifi-slash mr-2"></i>
-          Офлайн режим: Интернет байланысын тексеріңіз
-        </div>
-      )}
-      {connectionError && !isOffline && (
-        <div className="fixed top-0 left-0 right-0 z-[200] bg-red-600 text-white text-[10px] font-black uppercase tracking-widest py-2 text-center animate-in slide-in-from-top duration-300">
-          <i className="fas fa-exclamation-triangle mr-2"></i>
-          {connectionError}
-          <button onClick={() => { setRetryCount(prev => prev + 1); setConnectionError(null); }} className="ml-4 underline">Қайта жүктеу</button>
-        </div>
-      )}
-      {!isLoggedIn ? <AuthScreen onAuth={handleAuth} /> : (
-        currentView.startsWith('admin') ? (
-          <AdminLayout currentView={currentView} setView={setCurrentView} user={user}>{renderContent()}</AdminLayout>
-        ) : (
-          <StudentLayout 
-            currentView={currentView} 
-            setView={setCurrentView} 
-            user={user} 
-            isDarkMode={isDarkMode} 
-            toggleDarkMode={toggleDarkMode}
-            hideNav={!!selectedLesson}
+        {isOffline && (
+          <div className="fixed top-0 left-0 right-0 z-[250] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest py-2 text-center">
+            <i className="fas fa-wifi-slash mr-2"></i>
+            Офлайн режим: Интернет байланысын тексеріңіз
+          </div>
+        )}
+        {connectionError && !isOffline && (
+          <div className="fixed top-0 left-0 right-0 z-[200] bg-red-600 text-white text-[10px] font-black uppercase tracking-widest py-2 text-center animate-in slide-in-from-top duration-300">
+            <i className="fas fa-exclamation-triangle mr-2"></i>
+            {connectionError}
+            <button onClick={() => { setRetryCount(prev => prev + 1); setConnectionError(null); }} className="ml-4 underline">Қайта жүктеу</button>
+          </div>
+        )}
+        {!isLoggedIn ? <AuthScreen onAuth={handleAuth} /> : (
+          currentView.startsWith('admin') ? (
+            <AdminLayout currentView={currentView} setView={setCurrentView} user={user}>{renderContent()}</AdminLayout>
+          ) : (
+            <StudentLayout 
+              currentView={currentView} 
+              setView={setCurrentView} 
+              user={user} 
+              isDarkMode={isDarkMode} 
+              toggleDarkMode={toggleDarkMode}
+              hideNav={!!selectedLesson}
+            >
+              {renderContent()}
+            </StudentLayout>
+          )
+        )}
+        {isLoggedIn && !currentView.startsWith('admin') && (
+          <motion.div 
+            drag
+            dragMomentum={false}
+            className="fixed bottom-24 left-6 z-[100] flex flex-col items-start gap-4 cursor-move"
+            style={{ touchAction: 'none' }}
           >
-            {renderContent()}
-          </StudentLayout>
-        )
-      )}
-      {isLoggedIn && !currentView.startsWith('admin') && (
-        <motion.div 
-          drag
-          dragMomentum={false}
-          className="fixed bottom-24 left-6 z-[100] flex flex-col items-start gap-4 cursor-move"
-          style={{ touchAction: 'none' }}
-        >
-          {isChatOpen && (
-            <div className="w-[320px] md:w-[380px] shadow-2xl animate-in slide-in-from-bottom-4 duration-300 cursor-default" onPointerDown={e => e.stopPropagation()}>
-              <AITutor onBack={() => setIsChatOpen(false)} />
+            {isChatOpen && (
+              <div className="w-[320px] md:w-[380px] shadow-2xl animate-in slide-in-from-bottom-4 duration-300 cursor-default" onPointerDown={e => e.stopPropagation()}>
+                <AITutor onBack={() => setIsChatOpen(false)} />
+              </div>
+            )}
+            <button
+              onClick={() => setIsChatOpen(!isChatOpen)}
+              onPointerDown={e => e.stopPropagation()}
+              className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-2xl transition-all active:scale-90 ${
+                isChatOpen ? 'bg-slate-800 rotate-90' : 'bg-emerald-600 hover:bg-emerald-700'
+              }`}
+            >
+              <i className={`fas ${isChatOpen ? 'fa-times' : 'fa-robot'} text-xl`}></i>
+              {!isChatOpen && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+              )}
+            </button>
+          </motion.div>
+        )}
+
+        {/* Daily Streak Completed Modal */}
+        <AnimatePresence>
+          {showStreakModal && streakRewardInfo && (
+            <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[300] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[32px] p-6 text-center space-y-6 shadow-2xl border border-amber-500/30 relative overflow-hidden"
+              >
+                {/* Confetti & Glow Background */}
+                <div className="absolute -top-12 -left-12 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl animate-pulse"></div>
+                <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-orange-500/10 rounded-full blur-2xl animate-pulse"></div>
+
+                {/* Fire Animation/Icon */}
+                <div className="relative mt-2">
+                  <div className="w-20 h-20 bg-gradient-to-tr from-amber-500 to-orange-600 rounded-[28px] flex items-center justify-center text-white text-4xl mx-auto shadow-lg shadow-orange-500/20 animate-bounce">
+                    <i className="fas fa-fire animate-pulse"></i>
+                  </div>
+                  <div className="absolute -top-1 -right-1 bg-yellow-400 text-slate-950 font-black text-xs px-2 py-0.5 rounded-full shadow-md border-2 border-white dark:border-slate-900">
+                    +{streakRewardInfo.newStreak}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600 font-sans">
+                    Күнделікті серия! 🔥
+                  </h3>
+                  <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold">
+                    Сіз бүгін 1 сұраққа жауап беріп, серияңызды сақтап қалдыңыз!
+                  </p>
+                </div>
+
+                {/* Day tracker */}
+                <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 flex justify-between items-center px-4">
+                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Серияңыз</span>
+                  <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 px-3 py-1 rounded-xl text-xs font-black">
+                    <i className="fas fa-calendar-check"></i>
+                    {streakRewardInfo.newStreak} күн қатарынан
+                  </div>
+                </div>
+
+                {/* Rewards Grid */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-amber-50/40 dark:bg-amber-950/10 border border-amber-200/20 rounded-2xl p-3 text-center space-y-1">
+                    <div className="text-lg font-black text-amber-500 flex items-center justify-center gap-1">
+                      <i className="fas fa-coins text-sm"></i>
+                      +{streakRewardInfo.points}
+                    </div>
+                    <p className="text-[8px] font-black uppercase tracking-wider text-amber-600/70 dark:text-amber-400/70">Ұпай сыйлығы</p>
+                  </div>
+                  <div className="bg-indigo-50/40 dark:bg-indigo-950/10 border border-indigo-200/20 rounded-2xl p-3 text-center space-y-1">
+                    <div className="text-lg font-black text-indigo-500 flex items-center justify-center gap-1">
+                      <i className="fas fa-bolt text-sm"></i>
+                      +{streakRewardInfo.xp}
+                    </div>
+                    <p className="text-[8px] font-black uppercase tracking-wider text-indigo-600/70 dark:text-indigo-400/70">XP Тәжірибе</p>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setShowStreakModal(false)}
+                  className="w-full py-3.5 bg-slate-900 dark:bg-amber-500 hover:bg-slate-800 dark:hover:bg-amber-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-md"
+                >
+                  Жалғастыру
+                </button>
+              </motion.div>
             </div>
           )}
-          <button
-            onClick={() => setIsChatOpen(!isChatOpen)}
-            onPointerDown={e => e.stopPropagation()}
-            className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-2xl transition-all active:scale-90 ${
-              isChatOpen ? 'bg-slate-800 rotate-90' : 'bg-emerald-600 hover:bg-emerald-700'
-            }`}
-          >
-            <i className={`fas ${isChatOpen ? 'fa-times' : 'fa-robot'} text-xl`}></i>
-            {!isChatOpen && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
-            )}
-          </button>
-        </motion.div>
-      )}
-    </div>
+        </AnimatePresence>
+      </div>
   );
 };
 export default App;

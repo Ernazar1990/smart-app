@@ -17,6 +17,25 @@
             fontFamily: {
               sans: ['Inter', 'sans-serif'],
               outfit: ['Outfit', 'sans-serif'],
+            },
+            colors: {
+              warm: {
+                50: '#fdf8f6',
+                100: '#f2e8e5',
+                200: '#eaddd7',
+                300: '#e0c8b2',
+                400: '#d4a373',
+                500: '#bc6c25',
+                600: '#8b4513',
+                700: '#6d3d1a',
+                800: '#4a2c17',
+                900: '#2b1a10',
+              },
+              primary: {
+                50: '#f5f3ff',
+                600: '#7c3aed',
+                700: '#6d28d9',
+              }
             }
           }
         }
@@ -26,33 +45,38 @@
         body { 
           font-family: 'Inter', sans-serif;
           -webkit-tap-highlight-color: transparent;
-          transition: background-color 0.3s ease, color 0.3s ease;
+          transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
         h1, h2, h3, h4, h5, .font-outfit {
           font-family: 'Outfit', sans-serif;
+          letter-spacing: -0.02em;
         }
+        .bg-warm-paper { background-color: #FCFBF9; }
+        .dark .bg-warm-paper { background-color: #0C0A09; }
+        
         .animate-in {
-          animation: fadeIn 0.4s ease-out;
+          animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
         @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
+          from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
         }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .custom-scrollbar::-webkit-scrollbar {
           height: 4px;
+          width: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #e2e8f0;
+          background: #d4a373;
           border-radius: 10px;
         }
         .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #334155;
+          background: #6d3d1a;
         }
     </style>
 <script type="importmap">
@@ -70,7 +94,7 @@
 }
 </script>
 </head>
-<body class="bg-[#FDFDFD] dark:bg-[#0F172A] text-gray-900 dark:text-slate-100 select-none">
+<body class="bg-warm-paper text-slate-900 dark:text-warm-50 select-none">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
 </body>

@@ -53,16 +53,23 @@ const ModuleList: React.FC<ModuleListProps> = ({ user, onSelectLesson, modules, 
               <button
                 key={sub.id}
                 onClick={() => onSelectSubject(sub.id)}
-                className="bg-white dark:bg-slate-800 p-5 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm flex items-center gap-5 hover:border-indigo-500 dark:hover:border-indigo-400 transition-all text-left group"
+                className={`p-6 rounded-[36px] border border-warm-100 dark:border-warm-800 shadow-sm flex items-center gap-6 hover:border-primary-400 dark:hover:border-primary-400 hover:shadow-xl hover:-translate-y-1 transition-all text-left group relative overflow-hidden ${
+                  `bg-gradient-to-br ${sub.color.replace('bg-', 'from-')}/10 to-white dark:to-warm-900`
+                }`}
               >
-                <div className={`${sub.color} w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg group-hover:scale-105 transition-transform`}>
+                {/* Decorative Icon Background */}
+                <div className={`absolute -right-4 -bottom-4 opacity-[0.05] dark:opacity-[0.1] text-6xl rotate-12 group-hover:rotate-0 transition-transform duration-700 ${sub.color.replace('bg-', 'text-')}`}>
                   <i className={`fas ${sub.icon}`}></i>
                 </div>
-                <div className="flex-1">
-                  <h5 className="font-black text-slate-900 dark:text-slate-100 text-base font-outfit">{sub.name}</h5>
-                  <p className="text-[9px] text-slate-400 uppercase font-black mt-0.5">Бағдарлама бойынша оқу</p>
+
+                <div className={`${sub.color} w-16 h-16 rounded-3xl flex items-center justify-center text-white text-3xl shadow-lg shadow-current/20 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 z-10`}>
+                  <i className={`fas ${sub.icon}`}></i>
                 </div>
-                <ChevronRight size={18} className="text-slate-200 dark:text-slate-700 group-hover:translate-x-1 transition-transform" />
+                <div className="flex-1 z-10">
+                  <h5 className="font-extrabold text-slate-900 dark:text-warm-50 text-lg font-outfit leading-tight">{sub.name}</h5>
+                  <p className="text-[10px] text-warm-400 dark:text-warm-500 uppercase font-bold tracking-widest mt-1">Оқуды жалғастыру</p>
+                </div>
+                <ChevronRight size={20} className="text-warm-300 dark:text-warm-700 group-hover:translate-x-1 transition-transform z-10" />
               </button>
             ))}
           </div>

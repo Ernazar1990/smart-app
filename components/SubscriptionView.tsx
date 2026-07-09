@@ -10,11 +10,12 @@ interface SubscriptionViewProps {
   user: UserProgress;
   onUpdateUser: (user: UserProgress) => void;
   onBack: () => void;
+  onRefresh?: () => void;
 }
 
 type SubStep = 'plans' | 'subjects' | 'payment' | 'code';
 
-const SubscriptionView: React.FC<SubscriptionViewProps> = ({ config, user, onUpdateUser, onBack }) => {
+const SubscriptionView: React.FC<SubscriptionViewProps> = ({ config, user, onUpdateUser, onBack, onRefresh }) => {
   const [step, setStep] = useState<SubStep>('plans');
   const [selectedBundle, setSelectedBundle] = useState<any>(null);
   const [duration, setDuration] = useState<'month' | 'year'>('month');
@@ -52,15 +53,22 @@ const SubscriptionView: React.FC<SubscriptionViewProps> = ({ config, user, onUpd
         .from('admin_users')
         .select('*')
         .eq('email', user.email)
-        .single();
+        .maybeSingle();
 
-      if (profileError || !profile) throw new Error('Профиль табылмады');
+      if (profileError || !profile) throw new Error('Профиль табылмады. Қайта кіріп көріңіз.');
 
-      if (profile.pin === activationCode) {
+      const upperInput = activationCode.toUpperCase();
+      const isCodeValid = (profile.subscriptionCode === upperInput) || (profile.activationCode === upperInput) || (profile.activationCode === activationCode);
+
+      if (isCodeValid) {
         // Update to Premium status in Supabase
         const { error: updateError } = await supabase
           .from('admin_users')
-          .update({ subscription: 'Premium' })
+          .update({ 
+            subscription: 'Premium',
+            // If it was a subscriptionCode, we might want to clear it or mark as used
+            // but for now just setting Premium is enough
+          })
           .eq('email', user.email);
 
         if (updateError) throw updateError;
@@ -68,10 +76,10 @@ const SubscriptionView: React.FC<SubscriptionViewProps> = ({ config, user, onUpd
         onUpdateUser({ ...profile, subscription: 'Premium' });
         setIsSuccess(true);
       } else {
-        setError('Қате код. Қайта тексеріңіз.');
+        setError('Қате код. Қайта тексеріңіз немесе админге хабарласыңыз.');
       }
-    } catch (err) {
-      setError('Тексеру кезінде қате кетті');
+    } catch (err: any) {
+      setError('Тексеру кезінде қате кетті: ' + err.message);
     }
   };
 
@@ -154,31 +162,49 @@ const SubscriptionView: React.FC<SubscriptionViewProps> = ({ config, user, onUpd
           </div>
 
           <div className="space-y-4">
-            {config.bundles.map((bundle) => (
-              <button 
-                key={bundle.id} 
-                onClick={() => handleSelectBundle(bundle)}
-                className={`w-full p-6 rounded-[35px] border-2 text-left transition-all relative group hover:scale-[1.02] active:scale-95 ${bundle.color} ${selectedBundle?.id === bundle.id ? 'ring-4 ring-indigo-500/20' : ''}`}
-              >
-                {bundle.badge && (
-                  <span className="absolute -top-3 right-6 bg-emerald-600 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">
-                    {bundle.badge}
-                  </span>
-                )}
-                <div className="flex justify-between items-center">
-                  <div className="space-y-1">
-                    <h4 className="text-xl font-black text-gray-800 dark:text-white">{bundle.name}</h4>
-                    <p className="text-xs text-gray-500">{bundle.desc}</p>
+            {config.bundles && config.bundles.length > 0 ? (
+              config.bundles.map((bundle) => (
+                <button 
+                  key={bundle.id} 
+                  onClick={() => handleSelectBundle(bundle)}
+                  className={`w-full p-6 rounded-[35px] border-2 text-left transition-all relative group hover:scale-[1.02] active:scale-95 ${bundle.color} ${selectedBundle?.id === bundle.id ? 'ring-4 ring-indigo-500/20' : ''}`}
+                >
+                  {bundle.badge && (
+                    <span className="absolute -top-3 right-6 bg-emerald-600 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">
+                      {bundle.badge}
+                    </span>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <div className="space-y-1">
+                      <h4 className="text-xl font-black text-gray-800 dark:text-white">{bundle.name}</h4>
+                      <p className="text-xs text-gray-500">{bundle.desc}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-black text-gray-900 dark:text-white">
+                        {duration === 'month' ? bundle.priceMonth : bundle.priceYear}
+                      </p>
+                      <p className="text-[10px] text-gray-400 font-black uppercase">{duration === 'month' ? 'Айына' : 'Жылына'}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-black text-gray-900 dark:text-white">
-                      {duration === 'month' ? bundle.priceMonth : bundle.priceYear}
-                    </p>
-                    <p className="text-[10px] text-gray-400 font-black uppercase">{duration === 'month' ? 'Айына' : 'Жылына'}</p>
-                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="p-12 text-center bg-gray-50 dark:bg-slate-900 rounded-[40px] border-2 border-dashed border-gray-200 dark:border-slate-700">
+                <div className="w-16 h-16 bg-gray-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
+                  <i className="fas fa-box-open text-2xl"></i>
                 </div>
-              </button>
-            ))}
+                <h4 className="font-black text-gray-900 dark:text-white mb-2">Пакеттер табылмады</h4>
+                <p className="text-xs text-gray-500 font-bold mb-4">Жазылым пакеттері әлі бапталмаған. Админмен хабарласыңыз.</p>
+                {onRefresh && (
+                  <button 
+                    onClick={onRefresh}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg"
+                  >
+                    Жаңарту
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -245,7 +271,14 @@ const SubscriptionView: React.FC<SubscriptionViewProps> = ({ config, user, onUpd
 
           <div className="bg-white dark:bg-slate-800 p-8 rounded-[45px] border border-gray-100 dark:border-slate-700 shadow-xl space-y-8">
             <div className="aspect-square max-w-[240px] mx-auto bg-white rounded-3xl border-8 border-emerald-500/10 p-4 shadow-inner relative group">
-              <img src={config.qrCodeUrl} alt="Kaspi QR" className="w-full h-full" referrerPolicy="no-referrer" />
+              {config.qrCodeUrl ? (
+                <img src={config.qrCodeUrl} alt="Kaspi QR" className="w-full h-full" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                  <i className="fas fa-qrcode text-4xl mb-2"></i>
+                  <p className="text-[8px] font-black uppercase tracking-widest">QR код жүктелмеген</p>
+                </div>
+              )}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="bg-white p-2 rounded-lg shadow-md border border-gray-100">
                   <img src="https://kaspi.kz/img/logo.svg" alt="Kaspi" className="w-8" />

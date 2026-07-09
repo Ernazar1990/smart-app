@@ -38,7 +38,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   setSubscriptionConfig,
   refreshData
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'content' | 'news' | 'unis' | 'ai' | 'users' | 'staff' | 'home' | 'subscription'>(
+  const [activeSubTab, setActiveSubTab] = useState<'content' | 'news' | 'unis' | 'ai' | 'users' | 'staff' | 'home' | 'subscription' | 'system'>(
     currentView === 'admin-news' ? 'news' : 
     currentView === 'admin-content' ? 'content' :
     currentView === 'admin-users' ? 'users' :
@@ -46,7 +46,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     currentView === 'admin-home' ? 'home' :
     currentView === 'admin-unis' ? 'unis' :
     currentView === 'admin-ai' ? 'ai' : 
-    currentView === 'admin-subscription' ? 'subscription' : 'content'
+    currentView === 'admin-subscription' ? 'subscription' :
+    currentView === 'admin-system' ? 'system' : 'content'
   );
 
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
@@ -66,9 +67,61 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     { name: 'Аружан Серік', email: 'aru@example.com', chosenElectives: ['Биология', 'Химия'], points: 980, subscription: 'Free', role: 'student', completedLessons: [] },
   ]);
 
-  const isSuperAdmin = user.email === 'nur.abuuadi@gmail.com';
+  const isSuperAdmin = user.email === 'nur.abuuadi@gmail.com' || user.email === 'ernazarnurtay@gmail.com';
   const staffMember = staffList.find(s => s.email === user.email);
   const allowedSubjects = isSuperAdmin ? SUBJECTS : (staffMember?.permissions ? SUBJECTS.filter(s => staffMember.permissions.includes(s.id)) : []);
+
+  // System state
+  const [dbStatus, setDbStatus] = useState<Record<string, 'ok' | 'error' | 'empty' | 'outdated'>>({});
+  const [dbIssues, setDbIssues] = useState<string[]>([]);
+  const [isCheckingDb, setIsCheckingDb] = useState(false);
+
+  const checkDbHealth = async () => {
+    setIsCheckingDb(true);
+    const tables = ['admin_users', 'staff', 'news', 'home_config', 'config', 'modules', 'universities', 'specialties'];
+    const status: Record<string, 'ok' | 'error' | 'empty' | 'outdated'> = {};
+    const issues: string[] = [];
+    
+    for (const table of tables) {
+      try {
+        const { data, error } = await supabase.from(table).select('*').limit(1);
+        if (error) {
+          status[table] = 'error';
+          issues.push(`${table} кестесі табылмады немесе қате: ${error.message}`);
+          continue;
+        }
+        
+        if (!data || data.length === 0) {
+          status[table] = 'empty';
+        } else {
+          status[table] = 'ok';
+          
+          // Check for critical columns in admin_users
+          if (table === 'admin_users') {
+            const cols = Object.keys(data[0]);
+            const missing = [];
+            if (!cols.includes('activationCode')) missing.push('activationCode');
+            if (!cols.includes('subscriptionCode')) missing.push('subscriptionCode');
+            if (!cols.includes('pin')) missing.push('pin');
+            
+            if (missing.length > 0) {
+              status[table] = 'outdated';
+              issues.push(`admin_users: ${missing.join(', ')} бағандары жетіспейді`);
+            }
+          }
+        }
+      } catch (e) {
+        status[table] = 'error';
+      }
+    }
+    setDbStatus(status);
+    setDbIssues(issues);
+    setIsCheckingDb(false);
+  };
+
+  React.useEffect(() => {
+    if (activeSubTab === 'system') checkDbHealth();
+  }, [activeSubTab]);
 
   const handleSaveNews = async () => {
     if (!editingNews?.title || !editingNews?.content) return;
@@ -194,6 +247,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     else if (currentView === 'admin-home') setActiveSubTab('home');
     else if (currentView === 'admin-unis') setActiveSubTab('unis');
     else if (currentView === 'admin-ai') setActiveSubTab('ai');
+    else if (currentView === 'admin-subscription') setActiveSubTab('subscription');
+    else if (currentView === 'admin-system') setActiveSubTab('system');
   }, [currentView]);
 
   const fetchStudents = async () => {
@@ -363,6 +418,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       };
       const { error } = await supabase.from('config').upsert({ id: 'subscription', value: initialConfig }, { onConflict: 'id' });
       if (error) throw error;
+      
+      // Also update home_config if it's empty
+      const { data: homeData } = await supabase.from('home_config').select('id').eq('id', 'main').maybeSingle();
+      if (!homeData) {
+        await supabase.from('home_config').upsert({ 
+          id: 'main', 
+          config: {
+            heroTitle: 'Smart UBT - Болашағыңа жол аш!',
+            heroSubtitle: 'ҰБТ-ға дайындықтың ең тиімді платформасы',
+            stats: [
+              { label: 'Оқушылар', value: '10,000+' },
+              { label: 'Сабақтар', value: '500+' },
+              { label: 'Нәтиже', value: '130+' }
+            ]
+          }
+        });
+      }
+
       setSubscriptionConfig(initialConfig);
       alert('Бастапқы жазылым баптаулары орнатылды!');
       refreshData();
@@ -508,11 +581,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     
     setIsSaving(true);
     try {
+      const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
       const studentData = {
         ...editingStudent,
         points: editingStudent.points || 0,
         subscription: editingStudent.subscription || 'Free',
         pin: editingStudent.pin || Math.floor(1000 + Math.random() * 9000).toString(),
+        activationCode: editingStudent.activationCode || generatedCode,
         chosenElectives: editingStudent.chosenElectives || [],
         role: 'student',
         completedLessons: editingStudent.completedLessons || []
@@ -827,24 +902,95 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
               </div>
+            </div>
+          )}
 
-              {isSuperAdmin && (
-                <div className="mt-12 p-8 bg-slate-900 rounded-[40px] border border-slate-800 text-white space-y-6">
+          {activeSubTab === 'system' && isSuperAdmin && (
+            <div className="space-y-8 animate-in fade-in">
+                <div className="bg-white dark:bg-slate-800 p-8 rounded-[40px] border border-gray-100 dark:border-slate-700 shadow-sm space-y-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-xl">
+                    <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-xl text-white">
                       <i className="fas fa-database"></i>
                     </div>
                     <div>
-                      <h4 className="font-black font-outfit">Деректер базасын баптау (RLS)</h4>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Егер "Row-Level Security" қатесі шықса</p>
+                      <h4 className="font-black font-outfit">Жүйелік баптаулар</h4>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Деректер базасы мен баптаулар</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Кестелер статусы</h5>
+                        <button onClick={checkDbHealth} className="text-[8px] font-black text-indigo-600 uppercase hover:underline">Жаңарту</button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {Object.entries(dbStatus).map(([table, status]) => (
+                          <div key={table} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700">
+                            <span className="text-[9px] font-bold text-slate-600 dark:text-slate-300">{table}</span>
+                            {status === 'ok' ? (
+                              <i className="fas fa-check-circle text-emerald-500 text-[10px]"></i>
+                            ) : status === 'empty' ? (
+                              <i className="fas fa-exclamation-circle text-amber-500 text-[10px]"></i>
+                            ) : status === 'outdated' ? (
+                              <i className="fas fa-history text-orange-500 text-[10px]"></i>
+                            ) : (
+                              <i className="fas fa-times-circle text-red-500 text-[10px]"></i>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {dbIssues.length > 0 && (
+                        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/50 rounded-xl">
+                          <p className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-2">Табылған мәселелер:</p>
+                          <ul className="space-y-1">
+                            {dbIssues.map((issue, i) => (
+                              <li key={i} className="text-[8px] text-red-500 font-bold">• {issue}</li>
+                            ))}
+                          </ul>
+                          <button 
+                            onClick={() => {
+                              const el = document.getElementById('sql-code');
+                              if (el) el.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className="mt-3 w-full py-2 bg-red-600 text-white rounded-lg text-[8px] font-black uppercase tracking-widest shadow-lg"
+                          >
+                            SQL арқылы түзету
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-4">
+                      <h5 className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Жылдам баптау (Quick Setup)</h5>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button onClick={seedInitialSubscriptionConfig} className="p-3 bg-slate-50 dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-gray-100 dark:border-slate-700">
+                          <i className="fas fa-credit-card mb-1 block text-indigo-400"></i> Жазылымдар
+                        </button>
+                        <button onClick={seedInitialHomeConfig} className="p-3 bg-slate-50 dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-gray-100 dark:border-slate-700">
+                          <i className="fas fa-home mb-1 block text-emerald-400"></i> Басты бет
+                        </button>
+                        <button onClick={seedInitialNews} className="p-3 bg-slate-50 dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-gray-100 dark:border-slate-700">
+                          <i className="fas fa-newspaper mb-1 block text-amber-400"></i> Жаңалықтар
+                        </button>
+                        <button onClick={seedInitialContent} className="p-3 bg-slate-50 dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-gray-100 dark:border-slate-700">
+                          <i className="fas fa-book mb-1 block text-blue-400"></i> Оқу мазмұны
+                        </button>
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                    <p className="text-[10px] text-slate-400 mb-3 leading-relaxed">
+                  <div className="bg-slate-950 p-6 rounded-[32px] border border-slate-800 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-indigo-600/20 rounded-lg flex items-center justify-center text-indigo-400">
+                        <i className="fas fa-code"></i>
+                      </div>
+                      <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-200">SQL Editor (RLS & Tables)</h5>
+                    </div>
+                    <p className="text-[10px] text-slate-400 leading-relaxed">
                       Supabase SQL Editor-ға төмендегі кодты көшіріп басыңыз. Бұл кестелерді құрып, қажетті бағандарды қосады және RLS рұқсатын береді:
                     </p>
-                    <pre className="text-[9px] font-mono text-indigo-300 overflow-x-auto p-2 bg-black/30 rounded-lg">
+                    <pre id="sql-code" className="text-[9px] font-mono text-indigo-300 overflow-x-auto p-4 bg-black/30 rounded-2xl border border-white/5">
 {`-- 1. Кестелерді құру және бағандарды қосу
 CREATE TABLE IF NOT EXISTS admin_users (
   email TEXT PRIMARY KEY,
@@ -919,11 +1065,35 @@ CREATE POLICY "Full access staff" ON staff FOR ALL USING (true) WITH CHECK (true
 CREATE POLICY "Full access admin_users" ON admin_users FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Full access news" ON news FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Full access home_config" ON home_config FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Full access config" ON config FOR ALL USING (true) WITH CHECK (true);`}
+CREATE POLICY "Full access config" ON config FOR ALL USING (true) WITH CHECK (true);
+
+-- 3. Автоматты түрде профиль құру (Trigger)
+-- Бұл функция жаңа пайдаланушы тіркелгенде оны admin_users кестесіне қосады
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.admin_users (email, name, role, subscription, points, xp)
+  VALUES (
+    new.email,
+    COALESCE(new.raw_user_meta_data->>'name', 'Пайдаланушы'),
+    'student',
+    'Free',
+    0,
+    0
+  )
+  ON CONFLICT (email) DO NOTHING;
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Триггерді орнату
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();`}
                     </pre>
                   </div>
                 </div>
-              )}
             </div>
           )}
 
@@ -1423,12 +1593,49 @@ CREATE POLICY "Full access config" ON config FOR ALL USING (true) WITH CHECK (tr
                 </div>
 
                 <div className="space-y-6">
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Пакеттер мен бағалар</h4>
+                  <div className="flex justify-between items-center">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Пакеттер мен бағалар</h4>
+                    <button 
+                      onClick={() => {
+                        const newBundles = [...subscriptionConfig.bundles];
+                        newBundles.push({
+                          id: 'bundle_' + Date.now(),
+                          name: 'Жаңа пакет',
+                          priceMonth: '0 ₸',
+                          priceYear: '0 ₸',
+                          desc: 'Пакет сипаттамасы...',
+                          color: 'border-gray-200'
+                        });
+                        setSubscriptionConfig({...subscriptionConfig, bundles: newBundles});
+                      }}
+                      className="text-[8px] font-black text-emerald-600 uppercase tracking-widest hover:underline"
+                    >
+                      + Пакет қосу
+                    </button>
+                  </div>
                   <div className="space-y-4">
                     {subscriptionConfig.bundles.map((bundle, idx) => (
-                      <div key={bundle.id} className="p-4 bg-gray-50 dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-700 space-y-3">
+                      <div key={bundle.id} className="p-4 bg-gray-50 dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-700 space-y-3 relative group">
+                        <button 
+                          onClick={() => {
+                            const newBundles = subscriptionConfig.bundles.filter((_, i) => i !== idx);
+                            setSubscriptionConfig({...subscriptionConfig, bundles: newBundles});
+                          }}
+                          className="absolute top-2 right-2 w-6 h-6 rounded-lg bg-red-50 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          <i className="fas fa-trash text-[8px]"></i>
+                        </button>
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{bundle.name}</span>
+                          <input 
+                            type="text" 
+                            value={bundle.name} 
+                            onChange={e => {
+                              const newBundles = [...subscriptionConfig.bundles];
+                              newBundles[idx] = { ...bundle, name: e.target.value };
+                              setSubscriptionConfig({ ...subscriptionConfig, bundles: newBundles });
+                            }}
+                            className="text-[10px] font-black uppercase tracking-widest text-slate-600 bg-transparent border-b border-transparent focus:border-indigo-500 outline-none"
+                          />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
@@ -1484,9 +1691,79 @@ CREATE POLICY "Full access config" ON config FOR ALL USING (true) WITH CHECK (tr
                             />
                           </div>
                         </div>
+                        <div>
+                          <label className="text-[8px] font-black text-slate-400 uppercase mb-1 block">Сипаттамасы</label>
+                          <textarea 
+                            value={bundle.desc} 
+                            onChange={e => {
+                              const newBundles = [...subscriptionConfig.bundles];
+                              newBundles[idx] = { ...bundle, desc: e.target.value };
+                              setSubscriptionConfig({ ...subscriptionConfig, bundles: newBundles });
+                            }}
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg text-[10px] outline-none min-h-[60px]"
+                          />
+                        </div>
                       </div>
                     ))}
+                    {subscriptionConfig.bundles.length === 0 && (
+                      <div className="py-10 text-center border-2 border-dashed border-gray-100 dark:border-slate-800 rounded-3xl space-y-4">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Пакеттер жоқ.</p>
+                        <button 
+                          onClick={seedInitialSubscriptionConfig}
+                          className="bg-indigo-600 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all"
+                        >
+                          Бастапқы пакеттерді жүктеу
+                        </button>
+                      </div>
+                    )}
                   </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 dark:bg-slate-900/50 p-6 rounded-[32px] border border-gray-100 dark:border-slate-700 space-y-6">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Белсенді жазылымдар (Premium)</h4>
+                  <span className="text-[10px] font-black text-slate-400">{students.filter(s => s.subscription === 'Premium').length} оқушы</span>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="text-[8px] font-black uppercase text-gray-400 border-b border-gray-100 dark:border-slate-800">
+                      <tr>
+                        <th className="pb-3">Оқушы</th>
+                        <th className="pb-3">Мерзімі</th>
+                        <th className="pb-3 text-right">Статус</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                      {students.filter(s => s.subscription === 'Premium').map(s => (
+                        <tr key={s.email} className="group">
+                          <td className="py-3">
+                            <p className="font-bold text-[11px] text-slate-800 dark:text-white">{s.name}</p>
+                            <p className="text-[9px] text-gray-400">{s.email}</p>
+                          </td>
+                          <td className="py-3">
+                            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded">
+                              {s.subscriptionExpiresAt ? new Date(s.subscriptionExpiresAt).toLocaleDateString() : 'Шектеусіз'}
+                            </span>
+                          </td>
+                          <td className="py-3 text-right">
+                            <button 
+                              onClick={() => { setEditingStudent(s); setShowStudentModal(true); }}
+                              className="text-[9px] font-black text-indigo-600 hover:underline uppercase tracking-widest"
+                            >
+                              Өңдеу
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {students.filter(s => s.subscription === 'Premium').length === 0 && (
+                        <tr>
+                          <td colSpan={3} className="py-10 text-center text-[10px] text-gray-400 uppercase tracking-widest">Белсенді жазылымдар жоқ</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>

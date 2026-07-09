@@ -7,7 +7,7 @@ const ARENA_QUESTIONS = [
   { text: "Тұз қышқылының формуласы?", options: ["H2SO4", "HCl", "HNO3", "NaOH"], correct: 1 },
 ];
 
-const ArenaView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+const ArenaView: React.FC<{ onBack: () => void; onAnswerQuestion?: () => void }> = ({ onBack, onAnswerQuestion }) => {
   const [gameState, setGameState] = useState<'start' | 'playing' | 'end'>('start');
   const [currentQ, setCurrentQ] = useState(0);
   const [myScore, setMyScore] = useState(0);
@@ -38,6 +38,7 @@ const ArenaView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   const handleNext = (isCorrect: boolean) => {
     if (isCorrect) setMyScore(s => s + 10);
+    if (onAnswerQuestion) onAnswerQuestion();
     
     if (currentQ < ARENA_QUESTIONS.length - 1) {
       setCurrentQ(currentQ + 1);

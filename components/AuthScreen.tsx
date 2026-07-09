@@ -76,6 +76,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
       if (authError) throw authError;
 
       // 2. Create profile in 'admin_users' table
+      const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
       const finalData: Partial<UserProgress> = {
         email: formData.email,
         name: formData.name,
@@ -86,6 +87,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
         xp: 0,
         subscription: 'Free',
         pin: '', // ПИН-код бос болады
+        activationCode: generatedCode,
         role: 'student',
         completedLessons: [],
         chosenElectives: formData.electives === 'creative' ? ['creative'] : formData.electives.split('-')
@@ -111,49 +113,80 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
 
   const handleLoginByCode = async () => {
     if (!formData.email || !formData.pass || subCode.length !== 6) {
-      setError('Барлық өрістерді толтырыңыз');
+      setError('Барлық өрістерді толтырыңыз (Email, Құпия сөз және 6 таңбалы код)');
       return;
     }
     setLoading(true);
     setError('');
     try {
-      // 1. Authenticate with email/pass
+      // 1. Fetch profile and verify code FIRST
+      const { data: profile, error: profileError } = await supabase
+        .from('admin_users')
+        .select('*')
+        .eq('email', formData.email.toLowerCase().trim())
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+      
+      if (!profile) {
+        throw new Error('Бұл email-мен оқушы табылмады. Алдымен тіркеліңіз немесе админге хабарласыңыз.');
+      }
+
+      // Verify code
+      const upperCode = subCode.toUpperCase();
+      const isCodeValid = (profile.subscriptionCode === upperCode) || (profile.activationCode === upperCode) || (profile.activationCode === subCode);
+      
+      if (!isCodeValid) {
+        throw new Error(`Жазылым коды қате. Сіздің кодыңыз: ${subCode}. Егер қате болса, админге хабарласыңыз.`);
+      }
+
+      // Check expiry
+      if (profile.subscriptionExpiresAt && new Date(profile.subscriptionExpiresAt) < new Date()) {
+        throw new Error('Жазылым мерзімі аяқталды. Жазылымды жаңарту үшін админге хабарласыңыз.');
+      }
+
+      // 2. Try to authenticate with email/pass
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.pass,
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        // If login fails, it might be because the user was manually added by admin and has no Auth account
+        if (authError.message.includes('Invalid login credentials')) {
+          // Try to sign up the user with the provided password (auto-activation)
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: formData.email,
+            password: formData.pass,
+          });
 
-      // 2. Fetch profile and verify code
-      const { data: profile, error: profileError } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('email', formData.email)
-        .single();
-
-      if (profileError || !profile) {
-        throw new Error('Профиль табылмады');
+          if (signUpError) {
+            if (signUpError.message.includes('User already registered')) {
+              throw new Error('Құпия сөз қате. Егер ұмытсаңыз, "Құпия сөзді ұмыттым" батырмасын басыңыз.');
+            }
+            if (signUpError.message.includes('DATABASE ERROR SAVING NEW USER')) {
+              throw new Error('Деректер базасында қате (Trigger error). Админ панельдегі "System" бөліміндегі SQL-ді қайта көшіріп басыңыз.');
+            }
+            throw signUpError;
+          }
+          
+          // If sign up successful, we are logged in
+          onAuth(profile);
+        } else {
+          throw authError;
+        }
+      } else {
+        // Login successful
+        onAuth(profile);
       }
 
-      if (profile.subscriptionCode !== subCode.toUpperCase() && profile.activationCode !== subCode) {
-        setError('Жазылым коды қате');
-        return;
-      }
-
-      // Check expiry
-      if (profile.subscriptionExpiresAt && new Date(profile.subscriptionExpiresAt) < new Date()) {
-        setError('Жазылым мерзімі аяқталды');
-        return;
-      }
-
-      onAuth(profile);
       localStorage.setItem('smart_last_email', formData.email);
     } catch (err: any) {
+      console.error("Code login error:", err);
       if (err.message === 'Failed to fetch') {
-        setError('Серверге қосылу мүмкін емес. Supabase жобасы тоқтатылған (Paused) болуы мүмкін. Dashboard-тан "Resume" батырмасын басыңыз.');
+        setError('Серверге қосылу мүмкін емес. Supabase жобасы тоқтатылған (Paused) болуы мүмкін.');
       } else {
-        setError(err.message || 'Пошта, құпия сөз немесе код қате');
+        setError(err.message || 'Қате орын алды');
       }
     } finally {
       setLoading(false);
@@ -290,181 +323,150 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col justify-center px-6 bg-[#FDFDFD] dark:bg-slate-900 py-12">
+    <div className="min-h-screen flex flex-col justify-center px-6 bg-warm-paper dark:bg-warm-950 py-12">
       <div className="max-w-md mx-auto w-full">
-        <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-emerald-600 rounded-[22px] flex items-center justify-center text-white text-3xl mx-auto shadow-xl mb-4">
-            <i className="fas fa-flask"></i>
+        <div className="text-center mb-12">
+          <div className="w-20 h-20 bg-primary-600 rounded-[32px] flex items-center justify-center text-white text-4xl mx-auto shadow-2xl shadow-primary-200 dark:shadow-none mb-6">
+            <i className="fas fa-book-reader"></i>
           </div>
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight font-outfit">Smart App</h1>
-          <p className="text-gray-400 text-xs font-bold uppercase tracking-[0.2em] mt-2">Premium Education Platform</p>
+          <h1 className="text-4xl font-extrabold text-slate-900 dark:text-warm-50 tracking-tight font-outfit">Smart App</h1>
+          <p className="text-warm-400 dark:text-warm-500 text-[10px] font-bold uppercase tracking-[0.3em] mt-3">ҰБТ-ға дайындық академиясы</p>
         </div>
 
         {mode === 'selection' ? (
-          <div className="space-y-6 animate-in fade-in duration-500">
+          <div className="space-y-6 animate-in fade-in duration-700">
             <div className="text-center mb-8">
-              <h2 className="text-lg font-black text-gray-700 dark:text-slate-300 font-outfit uppercase tracking-widest">Кіру түрін таңдаңыз</h2>
+              <h2 className="text-sm font-bold text-warm-400 dark:text-warm-500 font-outfit uppercase tracking-widest">Кіру түрін таңдаңыз</h2>
             </div>
             
             <button 
               onClick={() => setMode('login')}
-              className="w-full p-6 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-[32px] shadow-sm hover:border-emerald-500 transition-all group text-left flex items-center gap-5"
+              className="w-full p-8 bg-white dark:bg-warm-900 border border-warm-100 dark:border-warm-800 rounded-[40px] shadow-sm hover:border-primary-500 dark:hover:border-primary-400 transition-all group text-left flex items-center gap-6"
             >
-              <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 text-2xl group-hover:scale-110 transition-transform">
+              <div className="w-16 h-16 bg-warm-50 dark:bg-warm-950 rounded-2xl flex items-center justify-center text-primary-600 text-3xl group-hover:scale-110 transition-transform shadow-inner">
                 <i className="fas fa-user"></i>
               </div>
               <div className="flex-1">
-                <h3 className="font-black text-slate-800 dark:text-white text-base font-outfit">Тегін көру</h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Тегін сабақтармен танысу</p>
+                <h3 className="font-extrabold text-slate-800 dark:text-warm-50 text-lg font-outfit">Тегін көру</h3>
+                <p className="text-[11px] text-warm-400 font-bold uppercase tracking-widest mt-1">Тегін сабақтармен танысу</p>
               </div>
-              <i className="fas fa-chevron-right text-slate-200"></i>
+              <i className="fas fa-chevron-right text-warm-200"></i>
             </button>
 
             <button 
               onClick={() => setMode('code-login')}
-              className="w-full p-6 bg-white dark:bg-slate-800 border border-indigo-100 dark:border-slate-700 rounded-[32px] shadow-sm hover:border-indigo-500 transition-all group text-left flex items-center gap-5"
+              className="w-full p-8 bg-white dark:bg-warm-900 border border-amber-100 dark:border-warm-800 rounded-[40px] shadow-sm hover:border-amber-500 transition-all group text-left flex items-center gap-6"
             >
-              <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600 text-2xl group-hover:scale-110 transition-transform">
+              <div className="w-16 h-16 bg-amber-50 dark:bg-amber-950 rounded-2xl flex items-center justify-center text-amber-500 text-3xl group-hover:scale-110 transition-transform shadow-inner">
                 <i className="fas fa-crown"></i>
               </div>
               <div className="flex-1">
-                <h3 className="font-black text-slate-800 dark:text-white text-base font-outfit">Premium кіру</h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Код арқылы толық қолжетімділік</p>
+                <h3 className="font-extrabold text-slate-800 dark:text-warm-50 text-lg font-outfit">Premium кіру</h3>
+                <p className="text-[11px] text-warm-400 font-bold uppercase tracking-widest mt-1">Код арқылы толық қолжетімділік</p>
               </div>
-              <i className="fas fa-chevron-right text-slate-200"></i>
+              <i className="fas fa-chevron-right text-warm-200"></i>
             </button>
 
-            <div className="pt-4 text-center">
-              <button onClick={() => setMode('register')} className="text-emerald-600 font-black text-xs uppercase tracking-widest hover:underline">Тіркелмегенсіз бе? Тіркелу</button>
+            <div className="pt-6 text-center">
+              <button onClick={() => setMode('register')} className="text-primary-600 dark:text-primary-400 font-extrabold text-xs uppercase tracking-widest hover:underline">Тіркелмегенсіз бе? Тіркелу</button>
             </div>
           </div>
         ) : mode === 'login' ? (
-          <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-300">
-            <button onClick={() => setMode('selection')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+          <div className="space-y-5 animate-in slide-in-from-bottom-6 duration-500">
+            <button onClick={() => setMode('selection')} className="text-[11px] font-bold text-warm-400 uppercase tracking-widest flex items-center gap-2 mb-4">
               <i className="fas fa-arrow-left"></i> Артқа
             </button>
-            <input type="email" placeholder="Email пошта" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm outline-none font-bold" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-            <input type="password" placeholder="Құпия сөз" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm outline-none font-bold" value={formData.pass} onChange={e => setFormData({...formData, pass: e.target.value})} />
-            {error && <p className="text-red-500 text-[10px] font-bold text-center uppercase tracking-widest">{error}</p>}
-            <button onClick={handleLogin} disabled={loading} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-lg font-outfit disabled:opacity-50">
+            <input type="email" placeholder="Email пошта" className="w-full p-5 bg-white dark:bg-warm-900 border border-warm-100 dark:border-warm-800 rounded-3xl shadow-sm outline-none font-bold text-slate-800 dark:text-warm-50 focus:border-primary-500 transition-all" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+            <input type="password" placeholder="Құпия сөз" className="w-full p-5 bg-white dark:bg-warm-900 border border-warm-100 dark:border-warm-800 rounded-3xl shadow-sm outline-none font-bold text-slate-800 dark:text-warm-50 focus:border-primary-500 transition-all" value={formData.pass} onChange={e => setFormData({...formData, pass: e.target.value})} />
+            {error && <p className="text-red-500 text-[11px] font-bold text-center uppercase tracking-widest">{error}</p>}
+            <button onClick={handleLogin} disabled={loading} className="w-full bg-primary-600 hover:bg-primary-700 text-white py-5 rounded-3xl font-black shadow-xl shadow-primary-200 dark:shadow-none font-outfit text-sm uppercase tracking-widest disabled:opacity-50 transition-all">
               {loading ? 'Кіру...' : 'Кіру'}
             </button>
-            <div className="flex flex-col gap-3 pt-2">
-              <button onClick={() => setMode('forgot-password')} className="w-full text-slate-400 font-black text-[10px] text-center uppercase tracking-widest">Құпия сөзді ұмыттыңыз ба?</button>
-              <button onClick={() => setMode('register')} className="w-full text-emerald-600 font-black text-xs text-center uppercase tracking-widest">Жаңа аккаунт ашу</button>
-              <button 
-                onClick={async () => {
-                  setLoading(true);
-                  setError('');
-                  try {
-                    await fetch('https://xdogbiyqcrrjlddmgiti.supabase.co', { mode: 'no-cors' });
-                    setError('Байланыс сәтті! Сервер қолжетімді.');
-                  } catch (e) {
-                    setError('Серверге қосылу мүмкін емес. Supabase жобасы тоқтатылған (Paused) болуы мүмкін.');
-                  }
-                  setLoading(false);
-                }} 
-                className="w-full text-slate-300 font-bold text-[8px] text-center uppercase tracking-widest mt-4"
-              >
-                Байланысты тексеру
-              </button>
-              <button 
-                onClick={() => {
-                  const demoUser: Partial<UserProgress> = {
-                    email: 'demo@smart.kz',
-                    name: 'Demo User',
-                    points: 100,
-                    xp: 500,
-                    subscription: 'Premium',
-                    role: 'student',
-                    completedLessons: [],
-                    chosenElectives: ['chemistry', 'biology']
-                  };
-                  onAuth(demoUser);
-                }}
-                className="w-full text-slate-400 font-bold text-[8px] text-center uppercase tracking-widest mt-2 hover:text-emerald-500 transition-colors"
-              >
-                Демо режим (Офлайн кіру)
-              </button>
+            <div className="flex flex-col gap-4 pt-4">
+              <button onClick={() => setMode('forgot-password')} className="w-full text-warm-400 font-bold text-[11px] text-center uppercase tracking-widest">Құпия сөзді ұмыттыңыз ба?</button>
+              <button onClick={() => setMode('register')} className="w-full text-primary-600 dark:text-primary-400 font-extrabold text-xs text-center uppercase tracking-widest">Жаңа аккаунт ашу</button>
             </div>
           </div>
         ) : mode === 'code-login' ? (
-          <div className="space-y-4 animate-in zoom-in duration-300">
-            <button onClick={() => setMode('selection')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+          <div className="space-y-6 animate-in zoom-in duration-500">
+            <button onClick={() => setMode('selection')} className="text-[11px] font-bold text-warm-400 uppercase tracking-widest flex items-center gap-2 mb-4">
               <i className="fas fa-arrow-left"></i> Артқа
             </button>
-            <div className="text-center mb-4">
-              <h2 className="text-lg font-black text-indigo-600 font-outfit uppercase tracking-widest">Premium Кіру</h2>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Деректеріңіз бен 6 таңбалы кодты енгізіңіз</p>
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-black text-amber-600 font-outfit uppercase tracking-wider">Premium Кіру</h2>
+              <p className="text-[11px] font-bold text-warm-400 uppercase tracking-widest mt-2">Деректеріңіз бен 6 таңбалы кодты енгізіңіз</p>
             </div>
             
-            <div className="space-y-3">
+            <div className="space-y-4">
               <input 
                 type="email" 
                 placeholder="Email пошта" 
-                className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm outline-none font-bold" 
+                className="w-full p-5 bg-white dark:bg-warm-900 border border-warm-100 dark:border-warm-800 rounded-3xl shadow-sm outline-none font-bold text-slate-800 dark:text-warm-50 focus:border-amber-500 transition-all" 
                 value={formData.email} 
                 onChange={e => setFormData({...formData, email: e.target.value})} 
               />
               <input 
                 type="password" 
                 placeholder="Құпия сөз" 
-                className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl shadow-sm outline-none font-bold" 
+                className="w-full p-5 bg-white dark:bg-warm-900 border border-warm-100 dark:border-warm-800 rounded-3xl shadow-sm outline-none font-bold text-slate-800 dark:text-warm-50 focus:border-amber-500 transition-all" 
                 value={formData.pass} 
                 onChange={e => setFormData({...formData, pass: e.target.value})} 
               />
-              <div className="pt-2">
-                <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-2 ml-1">Жазылым коды</p>
+              <div className="pt-4">
+                <p className="text-[10px] font-black text-amber-600 uppercase tracking-[0.3em] mb-3 ml-2">Жазылым коды</p>
                 <input 
                   type="text" 
                   maxLength={6} 
                   placeholder="ABC123" 
-                  className="w-full p-5 bg-indigo-50 dark:bg-slate-800 border-2 border-indigo-100 dark:border-slate-700 rounded-3xl text-center text-3xl font-black tracking-[0.2em] outline-none text-indigo-700 dark:text-indigo-400 focus:border-indigo-500 transition-all font-outfit uppercase" 
+                  className="w-full p-6 bg-amber-50 dark:bg-warm-900 border-2 border-amber-100 dark:border-warm-800 rounded-[32px] text-center text-4xl font-black tracking-[0.3em] outline-none text-amber-700 dark:text-amber-400 focus:border-amber-500 transition-all font-outfit uppercase" 
                   value={subCode} 
                   onChange={e => setSubCode(e.target.value.toUpperCase())} 
                 />
               </div>
             </div>
             
-            {error && <p className="text-red-500 text-[10px] font-bold text-center uppercase tracking-widest">{error}</p>}
-            <button onClick={handleLoginByCode} disabled={loading} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-lg font-outfit disabled:opacity-50">
+            {error && <p className="text-red-500 text-[11px] font-bold text-center uppercase tracking-widest">{error}</p>}
+            <button onClick={handleLoginByCode} disabled={loading} className="w-full bg-amber-500 hover:bg-amber-600 text-white py-5 rounded-[32px] font-black shadow-xl shadow-amber-100 dark:shadow-none font-outfit text-sm uppercase tracking-widest disabled:opacity-50 transition-all">
               {loading ? 'Тексерілуде...' : 'Кодпен кіру'}
             </button>
-            <button onClick={() => setMode('selection')} className="w-full text-gray-400 font-bold text-xs text-center uppercase">Кіруге оралу</button>
+            <div className="flex flex-col gap-4">
+              <button onClick={() => setMode('forgot-password')} className="w-full text-warm-400 font-bold text-[11px] text-center uppercase tracking-widest">Құпия сөзді ұмыттыңыз ба?</button>
+              <button onClick={() => setMode('selection')} className="w-full text-warm-400 font-bold text-[11px] text-center uppercase tracking-widest">Кіруге оралу</button>
+            </div>
           </div>
         ) : (
-          <div className="space-y-6">
-            <button onClick={() => setMode('selection')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+          <div className="space-y-8">
+            <button onClick={() => setMode('selection')} className="text-[11px] font-bold text-warm-400 uppercase tracking-widest flex items-center gap-2 mb-4">
               <i className="fas fa-arrow-left"></i> Артқа
             </button>
-            <div className="flex justify-between mb-4">
+            <div className="flex justify-between mb-6">
               {[1, 2, 3].map(i => (
-                <div key={i} className={`h-1.5 flex-1 mx-1 rounded-full ${step >= i ? 'bg-emerald-600' : 'bg-gray-100'}`}></div>
+                <div key={i} className={`h-2 flex-1 mx-1.5 rounded-full ${step >= i ? 'bg-primary-600' : 'bg-warm-100 dark:bg-warm-800'}`}></div>
               ))}
             </div>
             {step === 1 && (
-              <div className="space-y-4 animate-in slide-in-from-right">
-                <input type="text" placeholder="Аты-жөніңіз" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 rounded-2xl shadow-sm font-bold" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                <input type="email" placeholder="Email пошта" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 rounded-2xl shadow-sm font-bold" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-                <input type="tel" placeholder="Телефон" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 rounded-2xl shadow-sm font-bold" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+              <div className="space-y-5 animate-in slide-in-from-right duration-500">
+                <input type="text" placeholder="Аты-жөніңіз" className="w-full p-5 bg-white dark:bg-warm-900 border border-warm-100 rounded-3xl shadow-sm font-bold text-slate-800 dark:text-warm-50" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                <input type="email" placeholder="Email пошта" className="w-full p-5 bg-white dark:bg-warm-900 border border-warm-100 rounded-3xl shadow-sm font-bold text-slate-800 dark:text-warm-50" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                <input type="tel" placeholder="Телефон" className="w-full p-5 bg-white dark:bg-warm-900 border border-warm-100 rounded-3xl shadow-sm font-bold text-slate-800 dark:text-warm-50" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
               </div>
             )}
             {step === 2 && (
-              <div className="space-y-4 animate-in slide-in-from-right">
-                <input type="text" placeholder="Аймақ (мысалы: Алматы)" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 rounded-2xl shadow-sm font-bold" value={formData.region} onChange={e => setFormData({...formData, region: e.target.value})} />
-                <input type="text" placeholder="Мектеп" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 rounded-2xl shadow-sm font-bold" value={formData.school} onChange={e => setFormData({...formData, school: e.target.value})} />
+              <div className="space-y-5 animate-in slide-in-from-right duration-500">
+                <input type="text" placeholder="Аймақ (мысалы: Алматы)" className="w-full p-5 bg-white dark:bg-warm-900 border border-warm-100 rounded-3xl shadow-sm font-bold text-slate-800 dark:text-warm-50" value={formData.region} onChange={e => setFormData({...formData, region: e.target.value})} />
+                <input type="text" placeholder="Мектеп" className="w-full p-5 bg-white dark:bg-warm-900 border border-warm-100 rounded-3xl shadow-sm font-bold text-slate-800 dark:text-warm-50" value={formData.school} onChange={e => setFormData({...formData, school: e.target.value})} />
               </div>
             )}
             {step === 3 && (
-              <div className="space-y-4 animate-in slide-in-from-right">
-                <input type="password" placeholder="Құпия сөз" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 rounded-2xl shadow-sm font-bold" value={formData.pass} onChange={e => setFormData({...formData, pass: e.target.value})} />
-                <input type="password" placeholder="Құпия сөзді растау" className="w-full p-4 bg-white dark:bg-slate-800 border border-gray-100 rounded-2xl shadow-sm font-bold" value={formData.passConfirm} onChange={e => setFormData({...formData, passConfirm: e.target.value})} />
+              <div className="space-y-5 animate-in slide-in-from-right duration-500">
+                <input type="password" placeholder="Құпия сөз" className="w-full p-5 bg-white dark:bg-warm-900 border border-warm-100 rounded-3xl shadow-sm font-bold text-slate-800 dark:text-warm-50" value={formData.pass} onChange={e => setFormData({...formData, pass: e.target.value})} />
+                <input type="password" placeholder="Құпия сөзді растау" className="w-full p-5 bg-white dark:bg-warm-900 border border-warm-100 rounded-3xl shadow-sm font-bold text-slate-800 dark:text-warm-50" value={formData.passConfirm} onChange={e => setFormData({...formData, passConfirm: e.target.value})} />
               </div>
             )}
-            {error && <p className="text-red-500 text-[10px] font-bold text-center uppercase tracking-widest">{error}</p>}
-            <div className="flex gap-3">
-              {step > 1 && <button onClick={() => setStep(step - 1)} className="flex-1 bg-gray-100 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-gray-500">Артқа</button>}
-              <button onClick={handleRegisterNext} disabled={loading} className="flex-[2] bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-lg font-outfit disabled:opacity-50">
+            {error && <p className="text-red-500 text-[11px] font-bold text-center uppercase tracking-widest">{error}</p>}
+            <div className="flex gap-4">
+              {step > 1 && <button onClick={() => setStep(step - 1)} className="flex-1 bg-warm-100 dark:bg-warm-800 py-5 rounded-3xl font-black text-xs uppercase tracking-widest text-warm-500">Артқа</button>}
+              <button onClick={handleRegisterNext} disabled={loading} className="flex-[2] bg-primary-600 text-white py-5 rounded-3xl font-black shadow-xl shadow-primary-200 font-outfit text-sm uppercase tracking-widest disabled:opacity-50 transition-all">
                 {loading ? 'Жүктелуде...' : (step === 3 ? 'Аяқтау' : 'Келесі')}
               </button>
             </div>

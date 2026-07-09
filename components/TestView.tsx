@@ -10,9 +10,10 @@ interface TestViewProps {
   selectedSubjects?: string[]; // e.g., ['chem', 'bio']
   testType?: 'full' | 'chapter' | 'monthly';
   subjectId?: string | null;
+  onAnswerQuestion?: () => void;
 }
 
-const TestView: React.FC<TestViewProps> = ({ onComplete, onClose, selectedSubjects = ['chem', 'bio'], testType = 'full', subjectId }) => {
+const TestView: React.FC<TestViewProps> = ({ onComplete, onClose, selectedSubjects = ['chem', 'bio'], testType = 'full', subjectId, onAnswerQuestion }) => {
   const mandatorySubjects = ['history-kz', 'reading-lit', 'math-lit'];
   const allTestSubjects = testType === 'full' ? [...selectedSubjects, ...mandatorySubjects] : [subjectId || 'chem'];
   
@@ -77,6 +78,7 @@ const TestView: React.FC<TestViewProps> = ({ onComplete, onClose, selectedSubjec
         setSelectedOptions([...selectedOptions, idx]);
       }
     }
+    if (onAnswerQuestion) onAnswerQuestion();
   };
 
   const generateAiAnalysis = async (finalScore: number) => {

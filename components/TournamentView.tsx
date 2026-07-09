@@ -8,7 +8,7 @@ interface Participant {
   isMe?: boolean;
 }
 
-const TournamentView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+const TournamentView: React.FC<{ onBack: () => void; onAnswerQuestion?: () => void }> = ({ onBack, onAnswerQuestion }) => {
   const [phase, setPhase] = useState<'lobby' | 'battle' | 'results'>('lobby');
   const [timer, setTimer] = useState(5);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -38,6 +38,7 @@ const TournamentView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     if (isCorrect) {
       setParticipants(prev => prev.map(p => p.isMe ? { ...p, score: p.score + 50 } : p));
     }
+    if (onAnswerQuestion) onAnswerQuestion();
     
     // Simulate other participants scoring
     setParticipants(prev => prev.map(p => !p.isMe && Math.random() > 0.5 ? { ...p, score: p.score + Math.floor(Math.random() * 40) } : p));

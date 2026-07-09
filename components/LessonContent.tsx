@@ -9,9 +9,10 @@ interface LessonContentProps {
   onComplete: () => void;
   onClose: () => void;
   onOpenView?: (view: AppView) => void;
+  onAnswerQuestion?: () => void;
 }
 
-const LessonContent: React.FC<LessonContentProps> = ({ lesson, user, onComplete, onClose, onOpenView }) => {
+const LessonContent: React.FC<LessonContentProps> = ({ lesson, user, onComplete, onClose, onOpenView, onAnswerQuestion }) => {
   const [activeTab, setActiveTab] = useState<'video' | 'presentation' | 'quiz' | 'homework' | 'correction'>('video');
   const [completedTabs, setCompletedTabs] = useState<string[]>([]);
   const [videoWatched, setVideoWatched] = useState(false);
@@ -102,6 +103,7 @@ const LessonContent: React.FC<LessonContentProps> = ({ lesson, user, onComplete,
     if (showFeedback) return;
     setQuizAnswers({ ...quizAnswers, [qIdx]: aIdx });
     setShowFeedback(true);
+    if (onAnswerQuestion) onAnswerQuestion();
   };
 
   const handleNextQuiz = () => {
@@ -122,6 +124,7 @@ const LessonContent: React.FC<LessonContentProps> = ({ lesson, user, onComplete,
   const handleHwAnswer = (qIdx: number, aIdx: number) => {
     if (hwAnswers[qIdx] !== undefined) return;
     setHwAnswers({ ...hwAnswers, [qIdx]: aIdx });
+    if (onAnswerQuestion) onAnswerQuestion();
   };
 
   return (

@@ -1,5 +1,5 @@
 
-export type AppView = 'auth' | 'home' | 'subjects' | 'module-list' | 'lesson-detail' | 'test' | 'marathon' | 'rating' | 'profile' | 'subscription' | 'periodic-table' | 'ai-tutor' | 'news-detail' | 'uni-list' | 'onboarding' | 'scanner' | 'formulas' | 'admin' | 'admin-content' | 'admin-news' | 'admin-users' | 'admin-staff' | 'admin-home' | 'admin-unis' | 'admin-ai' | 'admin-subscription' | 'subject-selection' | 'solubility-table' | 'reactivity-series' | 'multiplication-table' | 'glossary' | 'ai-tools-hub' | 'reaction-balancer' | 'flashcards' | 'arena' | 'ai-study-plan' | 'career-advisor' | 'roadmap' | 'tournament';
+export type AppView = 'auth' | 'home' | 'subjects' | 'module-list' | 'lesson-detail' | 'test' | 'weekly-test' | 'marathon' | 'rating' | 'profile' | 'subscription' | 'periodic-table' | 'ai-tutor' | 'news-detail' | 'uni-list' | 'onboarding' | 'scanner' | 'formulas' | 'admin' | 'admin-content' | 'admin-news' | 'admin-users' | 'admin-staff' | 'admin-home' | 'admin-unis' | 'admin-ai' | 'admin-subscription' | 'admin-system' | 'subject-selection' | 'solubility-table' | 'reactivity-series' | 'multiplication-table' | 'glossary' | 'ai-tools-hub' | 'reaction-balancer' | 'flashcards' | 'arena' | 'ai-study-plan' | 'career-advisor' | 'roadmap' | 'tournament';
 
 export type UserRole = 'student' | 'teacher' | 'super-admin';
 
@@ -42,6 +42,8 @@ export interface UserProgress {
   role?: UserRole;
   permissions?: string[]; // Subject IDs like ['chem', 'bio']
   pointsHistory?: any[];
+  lastActiveDate?: string;
+  lastLoginDate?: string;
   // Added marathon field to UserProgress
   marathon?: UserMarathon;
 }

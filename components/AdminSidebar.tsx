@@ -10,7 +10,7 @@ interface AdminSidebarProps {
 }
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setView, userRole, userEmail }) => {
-  const isSuperAdmin = userRole === 'super-admin' || userEmail === 'nur.abuuadi@gmail.com';
+  const isSuperAdmin = userRole === 'super-admin' || userEmail === 'nur.abuuadi@gmail.com' || userEmail === 'ernazarnurtay@gmail.com';
 
   const adminMenuItems = [
     { id: 'admin-home', icon: 'fa-home', label: 'Басты бет', superOnly: true },
@@ -21,6 +21,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ currentView, setView, userR
     { id: 'admin-unis', icon: 'fa-university', label: 'ЖОО', superOnly: true },
     { id: 'admin-ai', icon: 'fa-robot', label: 'AI Hub', superOnly: true },
     { id: 'admin-subscription', icon: 'fa-credit-card', label: 'Жазылым', superOnly: true },
+    { id: 'admin-system', icon: 'fa-cog', label: 'Жүйе', superOnly: true },
   ];
 
   const filteredItems = adminMenuItems.filter(item => isSuperAdmin || !item.superOnly);
