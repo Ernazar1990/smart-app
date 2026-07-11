@@ -66,6 +66,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     { name: 'Әлихан Бақыт', email: 'ali@example.com', chosenElectives: ['География', 'Математика'], points: 1250, subscription: 'Premium', role: 'student', completedLessons: [] },
     { name: 'Аружан Серік', email: 'aru@example.com', chosenElectives: ['Биология', 'Химия'], points: 980, subscription: 'Free', role: 'student', completedLessons: [] },
   ]);
+  const [subFilter, setSubFilter] = useState<'all' | 'premium' | 'free'>('all');
 
   const isSuperAdmin = user.email === 'nur.abuuadi@gmail.com' || user.email === 'ernazarnurtay@gmail.com';
   const staffMember = staffList.find(s => s.email === user.email);
@@ -290,7 +291,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (activeSubTab === 'ai') fetchSpecialties();
     if (activeSubTab === 'news') refreshData();
     if (activeSubTab === 'content') refreshData();
-    if (activeSubTab === 'users') fetchStudents();
+    if (activeSubTab === 'users' || activeSubTab === 'subscription') fetchStudents();
   }, [activeSubTab]);
 
   const seedInitialData = async () => {
@@ -1248,8 +1249,8 @@ CREATE TRIGGER on_auth_user_created
 
           {activeSubTab === 'users' && (
             <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-gray-100 dark:border-slate-700 shadow-sm animate-in fade-in">
-               <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-lg font-black font-outfit">Оқушылар мониторингі</h3>
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-lg font-black font-outfit">Оқушылар</h3>
                   <div className="flex gap-3">
                     <button 
                       onClick={fetchStudents} 
@@ -1305,17 +1306,21 @@ CREATE TRIGGER on_auth_user_created
                                     <span key={e} className="text-[8px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded font-black uppercase">{e}</span>
                                   ))}
                                 </div>
-                                <div className="flex items-center gap-2 mt-1">
+                                <div className="flex flex-wrap items-center gap-2 mt-1">
                                   <span className="text-[9px] font-black text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded uppercase tracking-widest">
                                     PIN: {s.pin || '—'}
                                   </span>
-                                  {s.pin && (
+                                  <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded uppercase tracking-widest">
+                                    КОД: {s.activationCode || s.subscriptionCode || '—'}
+                                  </span>
+                                  {(s.activationCode || s.subscriptionCode || s.pin) && (
                                     <button 
                                       onClick={() => {
-                                        navigator.clipboard.writeText(s.pin || '');
-                                        alert('PIN көшірілді!');
+                                        const codeToCopy = s.activationCode || s.subscriptionCode || s.pin || '';
+                                        navigator.clipboard.writeText(codeToCopy);
+                                        alert(`Код көшірілді: ${codeToCopy}`);
                                       }}
-                                      className="text-slate-300 hover:text-indigo-600 transition-colors"
+                                      className="text-slate-400 hover:text-indigo-600 transition-colors"
                                       title="Көшіру"
                                     >
                                       <i className="fas fa-copy text-[10px]"></i>
@@ -1721,9 +1726,37 @@ CREATE TRIGGER on_auth_user_created
               </div>
 
               <div className="bg-gray-50 dark:bg-slate-900/50 p-6 rounded-[32px] border border-gray-100 dark:border-slate-700 space-y-6">
-                <div className="flex justify-between items-center">
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Белсенді жазылымдар (Premium)</h4>
-                  <span className="text-[10px] font-black text-slate-400">{students.filter(s => s.subscription === 'Premium').length} оқушы</span>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Белсенді жазылымдар мен Оқушылар</h4>
+                    <p className="text-[9px] text-gray-400 mt-1">Тіркелген барлық оқушылардың тізімі және олардың белсендіру кодтары</p>
+                  </div>
+                  <div className="flex gap-1.5 bg-white dark:bg-slate-800 p-1 rounded-2xl border border-gray-100 dark:border-slate-700 self-start sm:self-center">
+                    <button 
+                      onClick={() => setSubFilter('all')} 
+                      className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                        subFilter === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-indigo-600'
+                      }`}
+                    >
+                      Барлығы ({students.length})
+                    </button>
+                    <button 
+                      onClick={() => setSubFilter('premium')} 
+                      className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                        subFilter === 'premium' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-400 hover:text-emerald-600'
+                      }`}
+                    >
+                      Premium ({students.filter(s => s.subscription === 'Premium' || s.subscription === 'Ultra').length})
+                    </button>
+                    <button 
+                      onClick={() => setSubFilter('free')} 
+                      className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                        subFilter === 'free' ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-400 hover:text-amber-500'
+                      }`}
+                    >
+                      Күтуде (Free) ({students.filter(s => s.subscription === 'Free' || !s.subscription || s.subscription === 'none').length})
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="overflow-x-auto">
@@ -1731,35 +1764,136 @@ CREATE TRIGGER on_auth_user_created
                     <thead className="text-[8px] font-black uppercase text-gray-400 border-b border-gray-100 dark:border-slate-800">
                       <tr>
                         <th className="pb-3">Оқушы</th>
+                        <th className="pb-3">Мәліметтер / Код</th>
                         <th className="pb-3">Мерзімі</th>
-                        <th className="pb-3 text-right">Статус</th>
+                        <th className="pb-3">Статус</th>
+                        <th className="pb-3 text-right">Әрекет</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-                      {students.filter(s => s.subscription === 'Premium').map(s => (
-                        <tr key={s.email} className="group">
+                      {students.filter(s => {
+                        const isPremium = s.subscription === 'Premium' || s.subscription === 'Ultra';
+                        const isFree = s.subscription === 'Free' || !s.subscription || s.subscription === 'none';
+                        if (subFilter === 'premium') return isPremium;
+                        if (subFilter === 'free') return isFree;
+                        return true;
+                      }).map(s => (
+                        <tr key={s.email} className="group hover:bg-white/40 dark:hover:bg-slate-800/40 transition-colors">
                           <td className="py-3">
                             <p className="font-bold text-[11px] text-slate-800 dark:text-white">{s.name}</p>
                             <p className="text-[9px] text-gray-400">{s.email}</p>
+                            {s.phone && <p className="text-[8px] font-mono text-indigo-500 font-bold mt-0.5">{s.phone}</p>}
                           </td>
                           <td className="py-3">
-                            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded">
+                            <div className="flex flex-wrap gap-1.5 items-center">
+                              {s.activationCode && (
+                                <span className="text-[8px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-1.5 py-0.5 rounded tracking-widest uppercase">
+                                  Код: {s.activationCode}
+                                </span>
+                              )}
+                              {s.pin && (
+                                <span className="text-[8px] font-black text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded tracking-widest">
+                                  PIN: {s.pin}
+                                </span>
+                              )}
+                              {(s.activationCode || s.pin) && (
+                                <button 
+                                  onClick={() => {
+                                    const codeToCopy = s.activationCode || s.pin || '';
+                                    navigator.clipboard.writeText(codeToCopy);
+                                    alert(`Код сәтті көшірілді: ${codeToCopy}`);
+                                  }}
+                                  className="text-slate-400 hover:text-indigo-600 transition-colors"
+                                  title="Көшіру"
+                                >
+                                  <i className="fas fa-copy text-[10px]"></i>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3">
+                            <span className="text-[9px] font-bold text-slate-500">
                               {s.subscriptionExpiresAt ? new Date(s.subscriptionExpiresAt).toLocaleDateString() : 'Шектеусіз'}
                             </span>
                           </td>
+                          <td className="py-3">
+                            {(s.subscription === 'Free' || !s.subscription || s.subscription === 'none') ? (
+                              <button 
+                                onClick={async () => {
+                                  if (!confirm(`"${s.name}" оқушысын Premium статусына ауыстыруға сенімдісіз бе?`)) return;
+                                  try {
+                                    const { error } = await supabase
+                                      .from('admin_users')
+                                      .update({ subscription: 'Premium' })
+                                      .eq('email', s.email);
+                                    if (error) throw error;
+                                    alert('Оқушы Premium статусына сәтті ауыстырылды!');
+                                    fetchStudents();
+                                  } catch (err) {
+                                    alert('Қате: ' + (err as any).message);
+                                  }
+                                }}
+                                className="px-2 py-1 bg-amber-100 text-amber-800 text-[8px] font-black uppercase tracking-wider rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                              >
+                                Тегін (Free) • Активациялау
+                              </button>
+                            ) : (
+                              <button 
+                                onClick={async () => {
+                                  if (!confirm(`"${s.name}" оқушысын Тегін (Free) статусына қайтаруға сенімдісіз бе?`)) return;
+                                  try {
+                                    const { error } = await supabase
+                                      .from('admin_users')
+                                      .update({ subscription: 'Free' })
+                                      .eq('email', s.email);
+                                    if (error) throw error;
+                                    alert('Оқушы Тегін (Free) статусына ауыстырылды!');
+                                    fetchStudents();
+                                  } catch (err) {
+                                    alert('Қате: ' + (err as any).message);
+                                  }
+                                }}
+                                className="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-[8px] font-black uppercase tracking-wider rounded-lg hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                              >
+                                Premium • Өшіру
+                              </button>
+                            )}
+                          </td>
                           <td className="py-3 text-right">
-                            <button 
-                              onClick={() => { setEditingStudent(s); setShowStudentModal(true); }}
-                              className="text-[9px] font-black text-indigo-600 hover:underline uppercase tracking-widest"
-                            >
-                              Өңдеу
-                            </button>
+                            <div className="flex justify-end items-center gap-2">
+                              {s.phone && s.activationCode && (
+                                <button 
+                                  onClick={() => {
+                                    const cleanPhone = s.phone?.replace(/\D/g, '');
+                                    const message = encodeURIComponent(`Сәлеметсіз бе, ${s.name}! Сіздің Smart UBT платформасындағы Premium белсендіру кодыңыз дайын: ${s.activationCode}. Платформаға кіріп, осы кодты енгізіп Premium жазылымға өте аласыз. Сәттілік! 🚀`);
+                                    window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
+                                  }}
+                                  className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                  title="WhatsApp-қа код жіберу"
+                                >
+                                  <i className="fab fa-whatsapp text-sm"></i>
+                                </button>
+                              )}
+                              <button 
+                                onClick={() => { setEditingStudent(s); setShowStudentModal(true); }}
+                                className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                title="Өңдеу"
+                              >
+                                <i className="fas fa-edit text-xs"></i>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
-                      {students.filter(s => s.subscription === 'Premium').length === 0 && (
+                      {students.filter(s => {
+                        const isPremium = s.subscription === 'Premium' || s.subscription === 'Ultra';
+                        const isFree = s.subscription === 'Free' || !s.subscription || s.subscription === 'none';
+                        if (subFilter === 'premium') return isPremium;
+                        if (subFilter === 'free') return isFree;
+                        return true;
+                      }).length === 0 && (
                         <tr>
-                          <td colSpan={3} className="py-10 text-center text-[10px] text-gray-400 uppercase tracking-widest">Белсенді жазылымдар жоқ</td>
+                          <td colSpan={5} className="py-10 text-center text-[10px] text-gray-400 uppercase tracking-widest font-black">Сәйкес оқушылар табылмады</td>
                         </tr>
                       )}
                     </tbody>
