@@ -203,7 +203,7 @@ const HomeView: React.FC<HomeViewProps> = ({ user, subjects, onSelectView, onSel
           </p>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Жоспар */}
           <button
             onClick={() => onSelectView('roadmap')}
@@ -272,6 +272,30 @@ const HomeView: React.FC<HomeViewProps> = ({ user, subjects, onSelectView, onSel
               </h4>
               <p className="text-[9px] text-slate-500 dark:text-warm-300 font-semibold mt-0.5">
                 Пән комбинациялары және болашақ бағыттар
+              </p>
+            </div>
+          </button>
+
+          {/* Card 4: Дайын Тесттер (Симулятор) */}
+          <button
+            onClick={() => onSelectView('test')}
+            className="group relative overflow-hidden rounded-2xl p-4 text-left border border-indigo-200 dark:border-indigo-900/50 bg-gradient-to-br from-indigo-50 via-violet-50/30 to-purple-50/10 dark:from-indigo-950/25 dark:via-violet-950/10 dark:to-purple-950/5 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex flex-col justify-between min-h-[110px]"
+            id="quick-nav-test-sim"
+          >
+            <div className="flex justify-between items-start w-full">
+              <div className="p-2 rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20">
+                <i className="fas fa-vial text-sm"></i>
+              </div>
+              <span className="text-[9px] font-black uppercase text-indigo-700 dark:text-indigo-400 tracking-wider bg-indigo-100 dark:bg-indigo-950/50 px-2.5 py-0.5 rounded-full">
+                ҰБТ СИМУЛЯТОРЫ
+              </span>
+            </div>
+            <div className="mt-3">
+              <h4 className="text-xs font-black text-slate-900 dark:text-warm-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors uppercase tracking-wider">
+                Дайын Тесттер 🎯
+              </h4>
+              <p className="text-[9px] text-slate-500 dark:text-warm-300 font-semibold mt-0.5">
+                Ұлттық сынақ симуляторы, AI Түсіндірмелер
               </p>
             </div>
           </button>

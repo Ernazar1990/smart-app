@@ -481,7 +481,7 @@ const App: React.FC = () => {
       case 'career-advisor': return <CareerAdvisorView onBack={() => setCurrentView('ai-tools-hub')} />;
       case 'roadmap': return <RoadmapView onBack={() => setCurrentView('home')} allModules={allModules} user={user} onSelectLesson={setSelectedLesson} subjects={SUBJECTS} initialSubjectId={selectedSubjectId} />;
       case 'tournament': return <TournamentView onBack={() => setCurrentView('home')} onAnswerQuestion={handleAnswerQuestion} />;
-      case 'test': return <TestView selectedSubjects={user.chosenElectives} onComplete={(s) => setUser({...user, points: user.points + s})} onAnswerQuestion={handleAnswerQuestion} />;
+      case 'test': return <TestView selectedSubjects={user.chosenElectives} onComplete={(s) => setUser({...user, points: user.points + s})} onClose={() => setCurrentView('home')} onAnswerQuestion={handleAnswerQuestion} />;
       case 'admin':
       case 'admin-content':
       case 'admin-news':
