@@ -111,7 +111,7 @@ const SubscriptionView: React.FC<SubscriptionViewProps> = ({ config, user, onUpd
         <div className="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-[32px] border border-indigo-100 dark:border-indigo-800/50 max-w-md">
           <p className="text-xs text-indigo-700 dark:text-indigo-300 leading-relaxed font-bold">
             <i className="fas fa-exclamation-triangle mr-2"></i>
-            Ескерту: Бұл 6 таңбалы кодты сақтап қойыңыз. Оны Premium статусқа қайта кіру үшін пайдаланасыз. Ұмытпағаныңыз жөн!
+            Ескерту: Сіздің аккаунтыңыз сәтті белсендірілді! Енді платформаға тек email поштаңыз бен құпия сөзіңіз арқылы кіре аласыз. 6 таңбалы белсендіру коды енді қайтып сұралмайды.
           </p>
         </div>
         <button 

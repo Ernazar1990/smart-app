@@ -2,6 +2,16 @@ import React, { useState } from 'react';
 import { UserProgress, Subject, NewsItem } from '../types';
 import { motion } from 'motion/react';
 
+const MOTIVATIONAL_QUOTES = [
+  "Бүгінгі кішкене қадам – ертеңгі үлкен жеңіс. Сенің қолыңнан бәрі келеді! ✨",
+  "Ұлы жетістіктер бір күнде келмейді, олар күнделікті табанды еңбектен құралады. 💪",
+  "Қиындық уақытша, ал білім мен алған грантың мәңгілік болашағыңның негізі! 🏛️",
+  "Арманға барар жолдағы ең басты қаруың – сенің ешқашан берілмейтін табандылығың! 🔥",
+  "Өзіңе сен! Сенің бойыңда ҰБТ-дан ең жоғары 140 ұпайды бағындыратын зор әлеует бар! 🎯",
+  "Ең мықты жауынгер – уақыт пен шыдамдылық. Күн сайын бір сабақ оқып, біліміңді арттыр! 📚",
+  "Бүгінгі төккен терің мен табандылығың – ертеңгі ата-анаңның мақтанышы мен бақыты! ❤️"
+];
+
 interface HomeViewProps {
   user: UserProgress;
   subjects: Subject[];
@@ -26,6 +36,9 @@ const HomeView: React.FC<HomeViewProps> = ({ user, subjects, onSelectView, onSel
       image: 'https://picsum.photos/seed/news1/800/400'
     }
   ];
+
+  const [activeQuoteIdx, setActiveQuoteIdx] = useState(new Date().getDate() % MOTIVATIONAL_QUOTES.length);
+  const dailyQuote = MOTIVATIONAL_QUOTES[activeQuoteIdx];
 
   return (
     <div className="max-w-5xl mx-auto space-y-12 pb-24 px-4 animate-in fade-in duration-700 text-slate-800 dark:text-slate-100">
@@ -166,6 +179,10 @@ const HomeView: React.FC<HomeViewProps> = ({ user, subjects, onSelectView, onSel
                 ? "Құттықтаймыз! Бүгін кем дегенде 1 сұраққа жауап беріп, серияңызды сақтап қалдыңыз және +25 Ұпай, +100 XP сыйлығын алдыңыз!"
                 : "Серияңызды сақтап қалу және күнделікті сыйлықтар алу үшін бүгін кез келген сабақтан кем дегенде бір сұраққа жауап беріңіз."}
             </p>
+            <div className="mt-2.5 p-3 bg-orange-500/10 dark:bg-orange-500/5 rounded-2xl border border-orange-500/15 text-[11px] text-orange-800 dark:text-orange-300 font-extrabold flex items-start gap-2 max-w-md">
+              <span className="text-sm select-none leading-none mt-0.5">💡</span>
+              <p className="leading-normal"><span className="text-orange-600 dark:text-orange-400 font-black uppercase tracking-wider text-[9px] block mb-0.5">Күн мотивациясы</span>{dailyQuote}</p>
+            </div>
           </div>
         </div>
 
@@ -188,6 +205,41 @@ const HomeView: React.FC<HomeViewProps> = ({ user, subjects, onSelectView, onSel
               Тапсырманы бастау
             </button>
           )}
+        </div>
+      </div>
+
+      {/* 1.5. Interactive Motivational Word & Student Boost Banner */}
+      <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent dark:from-indigo-950/20 dark:via-purple-950/10 border border-indigo-500/20 dark:border-indigo-500/10 rounded-[32px] p-6 md:p-8 relative overflow-hidden shadow-[0_4px_25px_rgba(99,102,241,0.02)]" id="daily-motivation-panel">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl"></div>
+        <div className="absolute bottom-0 left-10 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl"></div>
+        
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="space-y-3 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 bg-indigo-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center">
+                <i className="fas fa-quote-left"></i>
+              </span>
+              <span className="text-[9px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">ҰБТ Жігерлендіру Ордасы • КҮН СӨЗІ</span>
+            </div>
+            
+            <div className="space-y-1">
+              <p className="text-sm md:text-base font-extrabold text-slate-900 dark:text-white leading-relaxed italic font-serif">
+                "{dailyQuote}"
+              </p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold uppercase tracking-widest">
+                — Дарынды оқушы рухы
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setActiveQuoteIdx((prev) => (prev + 1) % MOTIVATIONAL_QUOTES.length)}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-white dark:bg-slate-900 border border-indigo-500/20 dark:border-indigo-500/10 text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest rounded-xl hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all duration-300 shadow-sm active:scale-95"
+            id="next-motivation-quote-btn"
+          >
+            <i className="fas fa-sync-alt animate-spin-slow"></i>
+            Басқа жігер сөзі ⚡
+          </button>
         </div>
       </div>
 

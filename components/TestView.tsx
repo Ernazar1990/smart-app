@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MOCK_QUESTIONS, SUBJECTS } from '../constants';
 import { GoogleGenAI } from "@google/genai";
-import { ArrowLeft, BookOpen, Clock, Settings, Volume2, VolumeX, Sparkles, AlertTriangle, Check, X, Bookmark, BookmarkCheck, HelpCircle, Trophy, BarChart2, Eye } from 'lucide-react';
+import { generateSubjectVariantTest } from '../geminiService';
+import { ArrowLeft, BookOpen, Clock, Settings, Volume2, VolumeX, Sparkles, AlertTriangle, Check, X, Bookmark, BookmarkCheck, HelpCircle, Trophy, BarChart2, Eye, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface TestViewProps {
@@ -27,6 +28,11 @@ export const TestView: React.FC<TestViewProps> = ({
   // Config & Settings State
   const [testType, setTestType] = useState<'full' | 'subject'>('subject');
   const [selectedSubject, setSelectedSubject] = useState<string>(initialSubjectId || selectedSubjects[0] || 'chem');
+  const [selectedVariant, setSelectedVariant] = useState<number>(1);
+  const [useAiGenerator, setUseAiGenerator] = useState<boolean>(true);
+  const [loadingQuestions, setLoadingQuestions] = useState<boolean>(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  
   const [testStarted, setTestStarted] = useState(false);
   const [theme, setTheme] = useState<TestTheme>('midnight');
   const [fontSize, setFontSize] = useState<FontSize>('md');
@@ -149,27 +155,72 @@ export const TestView: React.FC<TestViewProps> = ({
     return () => clearInterval(interval);
   }, [timeLeft, isTimerActive]);
 
+  // Mix questions deterministically based on variant number to give 10 unique variants even on local mock data
+  const mixQuestionsByVariant = (questionsList: any[], variant: number) => {
+    const shuffled = [...questionsList];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      // Deterministic pseudo-random index based on variant and index
+      const j = Math.floor(Math.abs(Math.sin(variant * 10 + i) * 10000) % (i + 1));
+      const temp = shuffled[i];
+      shuffled[i] = shuffled[j];
+      shuffled[j] = temp;
+    }
+    return shuffled;
+  };
+
   // Load selected test configurations
-  const handleStartTest = () => {
-    let filteredQuestions: any[] = [];
-    
-    if (testType === 'full') {
-      // Full simulated UNT test includes Electives + Mandatory subjects
-      const subjectsToLoad = [...selectedSubjects, 'history-kz', 'reading-lit', 'math-lit'];
-      filteredQuestions = MOCK_QUESTIONS.filter(q => q.subject && subjectsToLoad.includes(q.subject));
-      setTimeLeft(120 * 60); // 2 hours for practice UNT
+  const handleStartTest = async () => {
+    setGenerationError(null);
+    let finalQuestions: any[] = [];
+    const subjectName = SUBJECTS.find(s => s.id === selectedSubject)?.name || selectedSubject;
+
+    if (testType === 'subject' && useAiGenerator) {
+      setLoadingQuestions(true);
+      try {
+        const aiQuestions = await generateSubjectVariantTest(selectedSubject, subjectName, selectedVariant);
+        if (aiQuestions && aiQuestions.length > 0) {
+          // Map to match structure expected by the app
+          finalQuestions = aiQuestions.map((q: any, index: number) => ({
+            id: `ai-${selectedSubject}-v${selectedVariant}-${index}`,
+            text: q.text,
+            options: q.options,
+            correctAnswer: q.isMulti && q.correctAnswers ? q.correctAnswers : (q.correctAnswer ?? 0),
+            isMulti: q.isMulti || false,
+            subject: selectedSubject,
+            explanation: q.explanation || "Жауап дұрыс таңдалды."
+          }));
+        } else {
+          throw new Error("Empty questions returned");
+        }
+      } catch (e: any) {
+        console.error("AI Generation failed, falling back to local database", e);
+        setGenerationError("AI арқылы нұсқаны жүктеу мүмкін болмады (интернет байланысы немесе кілт қатесі). Жергілікті база іске қосылды.");
+        
+        // Fallback to local
+        const localFiltered = MOCK_QUESTIONS.filter(q => q.subject === selectedSubject);
+        finalQuestions = mixQuestionsByVariant(localFiltered.length > 0 ? localFiltered : MOCK_QUESTIONS.filter(q => q.subject === 'chem'), selectedVariant);
+      } finally {
+        setLoadingQuestions(false);
+      }
     } else {
-      // Subject specific test
-      filteredQuestions = MOCK_QUESTIONS.filter(q => q.subject === selectedSubject);
-      setTimeLeft(40 * 60); // 40 minutes for single subject
+      // Local Mode or Full Test
+      if (testType === 'full') {
+        const subjectsToLoad = [...selectedSubjects, 'history-kz', 'reading-lit', 'math-lit'];
+        const fullFiltered = MOCK_QUESTIONS.filter(q => q.subject && subjectsToLoad.includes(q.subject));
+        finalQuestions = mixQuestionsByVariant(fullFiltered, selectedVariant);
+        setTimeLeft(120 * 60); // 2 hours for practice UNT
+      } else {
+        const localFiltered = MOCK_QUESTIONS.filter(q => q.subject === selectedSubject);
+        finalQuestions = mixQuestionsByVariant(localFiltered.length > 0 ? localFiltered : MOCK_QUESTIONS.filter(q => q.subject === 'chem'), selectedVariant);
+        setTimeLeft(40 * 60); // 40 minutes for single subject
+      }
     }
 
-    if (filteredQuestions.length === 0) {
-      filteredQuestions = MOCK_QUESTIONS.filter(q => q.subject === 'chem');
+    if (finalQuestions.length === 0) {
+      finalQuestions = MOCK_QUESTIONS.filter(q => q.subject === 'chem');
     }
 
-    // Randomize or limit
-    setQuestions(filteredQuestions);
+    setQuestions(finalQuestions);
     setCurrentIdx(0);
     setUserSelections({});
     setFlaggedQuestions([]);
@@ -420,6 +471,53 @@ export const TestView: React.FC<TestViewProps> = ({
 
   const st = getThemeStyles();
 
+  // Loading Screen for AI test generation
+  if (loadingQuestions) {
+    const subjectName = SUBJECTS.find(s => s.id === selectedSubject)?.name || selectedSubject;
+    return (
+      <div className={`min-h-[80vh] flex flex-col items-center justify-center p-6 text-center ${theme === 'light' ? 'text-slate-900 bg-slate-50' : 'text-white bg-slate-950'} font-sans`}>
+        <div className="relative mb-8">
+          <div className="absolute inset-0 rounded-full bg-indigo-500/15 blur-2xl animate-pulse"></div>
+          <div className="relative w-24 h-24 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin flex items-center justify-center shadow-lg shadow-indigo-500/10">
+            <Sparkles className="w-8 h-8 text-indigo-400 animate-bounce" />
+          </div>
+        </div>
+        
+        <h2 className="text-xl md:text-2xl font-black tracking-tight font-outfit uppercase">
+          AI ҰБТ Симуляторы 🤖
+        </h2>
+        <p className="text-xs md:text-sm text-indigo-400 font-extrabold mt-2 uppercase tracking-widest animate-pulse">
+          {subjectName} • {selectedVariant}-нұсқа құрастырылуда
+        </p>
+        
+        <div className="max-w-md bg-white/5 dark:bg-slate-900/60 border border-white/10 dark:border-slate-800 p-6 rounded-[32px] mt-8 space-y-4">
+          <div className="flex gap-3 text-left">
+            <span className="w-5 h-5 rounded-full bg-indigo-500/10 flex items-center justify-center text-xs text-indigo-400 font-bold">1</span>
+            <p className="text-xs text-slate-400 leading-normal">
+              <strong>Академиялық сұрақтар:</strong> Gemini 3.5 Flash ҰБТ мемлекеттік стандартына толық сай келетін сұрақтар жинағын құрастырады.
+            </p>
+          </div>
+          <div className="flex gap-3 text-left">
+            <span className="w-5 h-5 rounded-full bg-indigo-500/10 flex items-center justify-center text-xs text-indigo-400 font-bold">2</span>
+            <p className="text-xs text-slate-400 leading-normal">
+              <strong>Көптік және жалғыз жауаптар:</strong> Сұрақтардың құрылымына бір және бірнеше дұрыс жауабы бар күрделі тапсырмалар қамтылады.
+            </p>
+          </div>
+          <div className="flex gap-3 text-left">
+            <span className="w-5 h-5 rounded-full bg-indigo-500/10 flex items-center justify-center text-xs text-indigo-400 font-bold">3</span>
+            <p className="text-xs text-slate-400 leading-normal">
+              <strong>AI Түсіндірмелер:</strong> Әр сұрақтың дұрыс жауабына теориялық түсіндірме қоса жүктеледі.
+            </p>
+          </div>
+        </div>
+
+        <p className="text-[10px] text-slate-500 font-black mt-12 uppercase tracking-wider animate-pulse">
+          Әдетте жүктеу 3-7 секунд уақыт алады...
+        </p>
+      </div>
+    );
+  }
+
   // 1. WELCOME / SETUP SCREEN
   if (!testStarted && !showResult) {
     return (
@@ -454,6 +552,16 @@ export const TestView: React.FC<TestViewProps> = ({
             ))}
           </div>
         </div>
+
+        {generationError && (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-[24px] flex items-start gap-3 text-amber-500 dark:text-amber-400 text-xs font-semibold animate-in fade-in slide-in-from-top-1">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-black uppercase tracking-wider">Жүйелік Ескерту</p>
+              <p className="opacity-90 mt-0.5 leading-relaxed">{generationError}</p>
+            </div>
+          </div>
+        )}
 
         {/* Setup Bento Grid */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -520,6 +628,64 @@ export const TestView: React.FC<TestViewProps> = ({
                       <span>{sub.name}</span>
                     </button>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {testType === 'subject' && (
+              <div className="space-y-3 pt-4 border-t border-white/5 dark:border-slate-800/50 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">3-ҚАДАМ: НҰСҚАНЫ ТАҢДАҢЫЗ (1-10)</span>
+                <div className="grid grid-cols-5 gap-2">
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => { setSelectedVariant(v); playSynthesizedSound('click'); }}
+                      className={`py-3 rounded-2xl text-xs font-black border transition-all ${
+                        selectedVariant === v
+                          ? 'border-indigo-500 bg-indigo-500/15 text-white shadow-md'
+                          : 'border-white/5 bg-white/5 dark:bg-slate-900/40 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {v}-нұсқа
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {testType === 'subject' && (
+              <div className="space-y-3 pt-4 border-t border-white/5 dark:border-slate-800/50 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">СҰРАҚТАРДЫҢ КӨЗІ (РЕЖИМ)</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    onClick={() => { setUseAiGenerator(true); playSynthesizedSound('click'); }}
+                    className={`p-4 rounded-2xl text-left border transition-all flex items-start gap-3 ${
+                      useAiGenerator
+                        ? 'border-indigo-500 bg-indigo-500/10 text-white shadow-sm'
+                        : 'border-white/5 bg-white/5 dark:bg-slate-900/40 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Sparkles className="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-black">🤖 AI Симулятор (Ұсынылады)</h4>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Gemini 3.5 Flash арқылы нағыз жаңа ҰБТ сұрақтарын генерациялау</p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => { setUseAiGenerator(false); playSynthesizedSound('click'); }}
+                    className={`p-4 rounded-2xl text-left border transition-all flex items-start gap-3 ${
+                      !useAiGenerator
+                        ? 'border-indigo-500 bg-indigo-500/10 text-white shadow-sm'
+                        : 'border-white/5 bg-white/5 dark:bg-slate-900/40 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <BookOpen className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="text-xs font-black">💾 Жергілікті База</h4>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Оффлайн жүйедегі бар сұрақтарды нұсқа бойынша араластыріп беру</p>
+                    </div>
+                  </button>
                 </div>
               </div>
             )}

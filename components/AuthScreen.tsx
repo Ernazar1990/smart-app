@@ -24,7 +24,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
     region: '',
     school: '',
     electives: 'bio-chem',
-    pin: ''
+    pin: '',
+    activationCode: ''
   });
 
   const [error, setError] = useState('');
@@ -67,6 +68,36 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
     setLoading(true);
     setError('');
     try {
+      let isPremium = false;
+      let mergedProfileData: any = null;
+      const upperCode = formData.activationCode.trim().toUpperCase();
+
+      if (upperCode) {
+        if (upperCode.length !== 6) {
+          setError('Белсендіру коды 6 таңбалы болуы керек');
+          setLoading(false);
+          return;
+        }
+
+        // Search by code
+        const { data: codeProfile, error: codeError } = await supabase
+          .from('admin_users')
+          .select('*')
+          .or(`subscriptionCode.eq.${upperCode},activationCode.eq.${upperCode}`)
+          .maybeSingle();
+
+        if (codeError) throw codeError;
+
+        if (!codeProfile) {
+          setError('Бұл белсендіру коды табылмады. Қайта тексеріңіз немесе админге хабарласыңыз.');
+          setLoading(false);
+          return;
+        }
+
+        isPremium = true;
+        mergedProfileData = { ...codeProfile };
+      }
+
       // 1. Sign up with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
@@ -75,28 +106,44 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
 
       if (authError) throw authError;
 
-      // 2. Create profile in 'admin_users' table
+      // Query existing profile by email first
+      const { data: emailProfile } = await supabase
+        .from('admin_users')
+        .select('*')
+        .eq('email', formData.email.toLowerCase().trim())
+        .maybeSingle();
+
+      // Merge sources: emailProfile has highest priority, then mergedProfileData (from code), then defaults
+      const baseProfile = emailProfile || mergedProfileData || {};
+
+      // 2. Create/update profile in 'admin_users' table
       const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
       const finalData: Partial<UserProgress> = {
-        email: formData.email,
-        name: formData.name,
-        phone: formData.phone,
-        region: formData.region,
-        school: formData.school,
-        points: 0,
-        xp: 0,
-        subscription: 'Free',
-        pin: '', // ПИН-код бос болады
-        activationCode: generatedCode,
-        role: 'student',
-        completedLessons: [],
+        ...baseProfile,
+        email: formData.email.toLowerCase().trim(),
+        name: formData.name || baseProfile.name || 'Пайдаланушы',
+        phone: formData.phone || baseProfile.phone || '',
+        region: formData.region || baseProfile.region || '',
+        school: formData.school || baseProfile.school || '',
+        points: baseProfile.points ?? 0,
+        xp: baseProfile.xp ?? 0,
+        subscription: (isPremium || baseProfile.subscription === 'Premium') ? 'Premium' : 'Free',
+        pin: baseProfile.pin || '',
+        activationCode: upperCode || baseProfile.activationCode || generatedCode,
+        role: baseProfile.role || 'student',
+        completedLessons: baseProfile.completedLessons || [],
         chosenElectives: formData.electives === 'creative' ? ['creative'] : formData.electives.split('-')
       };
+
+      // If the code was found on a profile with a DIFFERENT email, let's delete that old profile record to prevent duplicates/orphans!
+      if (mergedProfileData && mergedProfileData.email && mergedProfileData.email.toLowerCase().trim() !== formData.email.toLowerCase().trim()) {
+         await supabase.from('admin_users').delete().eq('email', mergedProfileData.email);
+      }
 
       const { error: profileError } = await supabase.from('admin_users').upsert([finalData]);
       if (profileError) throw profileError;
 
-      localStorage.setItem('smart_user_name', formData.name);
+      localStorage.setItem('smart_user_name', finalData.name || '');
       localStorage.setItem('smart_last_email', formData.email);
       
       onAuth(finalData);
@@ -112,14 +159,40 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
   };
 
   const handleLoginByCode = async () => {
-    if (!formData.email || !formData.pass || subCode.length !== 6) {
-      setError('Барлық өрістерді толтырыңыз (Email, Құпия сөз және 6 таңбалы код)');
+    if (!formData.email || !formData.pass) {
+      setError('Пошта мен құпия сөзді енгізіңіз');
       return;
     }
     setLoading(true);
     setError('');
     try {
-      // 1. Fetch profile and verify code FIRST
+      // 1. Try standard email/password login first. If it succeeds, they are already registered!
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.pass,
+      });
+
+      if (!authError) {
+        // Login succeeded! Load profile
+        const { data: profile, error: profileError } = await supabase
+          .from('admin_users')
+          .select('*')
+          .eq('email', formData.email.toLowerCase().trim())
+          .maybeSingle();
+
+        if (profile) {
+          onAuth(profile);
+          localStorage.setItem('smart_last_email', formData.email);
+          return;
+        }
+      }
+
+      // 2. If login failed, they are probably registering/activating for the first time.
+      if (!subCode || subCode.length !== 6) {
+        throw new Error('Егер сіз бірінші рет кіріп тұрсаңыз, 6 таңбалы белсендіру кодын енгізіңіз. Ал егер бұрын тіркелген болсаңыз, құпия сөзіңіз қате.');
+      }
+
+      // Fetch profile and verify code FIRST
       const { data: profile, error: profileError } = await supabase
         .from('admin_users')
         .select('*')
@@ -145,41 +218,30 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
         throw new Error('Жазылым мерзімі аяқталды. Жазылымды жаңарту үшін админге хабарласыңыз.');
       }
 
-      // 2. Try to authenticate with email/pass
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      // Try to sign up the user with the provided password
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.pass,
       });
 
-      if (authError) {
-        // If login fails, it might be because the user was manually added by admin and has no Auth account
-        if (authError.message.includes('Invalid login credentials')) {
-          // Try to sign up the user with the provided password (auto-activation)
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email: formData.email,
-            password: formData.pass,
-          });
-
-          if (signUpError) {
-            if (signUpError.message.includes('User already registered')) {
-              throw new Error('Құпия сөз қате. Егер ұмытсаңыз, "Құпия сөзді ұмыттым" батырмасын басыңыз.');
-            }
-            if (signUpError.message.includes('DATABASE ERROR SAVING NEW USER')) {
-              throw new Error('Деректер базасында қате (Trigger error). Админ панельдегі "System" бөліміндегі SQL-ді қайта көшіріп басыңыз.');
-            }
-            throw signUpError;
-          }
-          
-          // If sign up successful, we are logged in
-          onAuth(profile);
-        } else {
-          throw authError;
+      if (signUpError) {
+        if (signUpError.message.includes('User already registered')) {
+          throw new Error('Құпия сөз қате. Егер ұмытсаңыз, "Құпия сөзді ұмыттым" батырмасын басыңыз.');
         }
-      } else {
-        // Login successful
-        onAuth(profile);
+        if (signUpError.message.includes('DATABASE ERROR SAVING NEW USER')) {
+          throw new Error('Деректер базасында қате (Trigger error). Админ панельдегі "System" бөліміндегі SQL-ді қайта көшіріп басыңыз.');
+        }
+        throw signUpError;
       }
 
+      // Ensure user subscription status is marked as Premium
+      const { error: updateError } = await supabase
+        .from('admin_users')
+        .update({ subscription: 'Premium' })
+        .eq('email', formData.email.toLowerCase().trim());
+
+      const updatedProfile = { ...profile, subscription: 'Premium' };
+      onAuth(updatedProfile);
       localStorage.setItem('smart_last_email', formData.email);
     } catch (err: any) {
       console.error("Code login error:", err);
@@ -413,7 +475,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
                 onChange={e => setFormData({...formData, pass: e.target.value})} 
               />
               <div className="pt-4">
-                <p className="text-[10px] font-black text-amber-600 uppercase tracking-[0.3em] mb-3 ml-2">Жазылым коды</p>
+                <p className="text-[10px] font-black text-amber-600 uppercase tracking-[0.3em] mb-3 ml-2">Жазылым коды (тек бірінші рет кіргенде қажет)</p>
                 <input 
                   type="text" 
                   maxLength={6} 
@@ -461,6 +523,17 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
               <div className="space-y-5 animate-in slide-in-from-right duration-500">
                 <input type="password" placeholder="Құпия сөз" className="w-full p-5 bg-white dark:bg-warm-900 border border-warm-100 rounded-3xl shadow-sm font-bold text-slate-800 dark:text-warm-50" value={formData.pass} onChange={e => setFormData({...formData, pass: e.target.value})} />
                 <input type="password" placeholder="Құпия сөзді растау" className="w-full p-5 bg-white dark:bg-warm-900 border border-warm-100 rounded-3xl shadow-sm font-bold text-slate-800 dark:text-warm-50" value={formData.passConfirm} onChange={e => setFormData({...formData, passConfirm: e.target.value})} />
+                <div className="pt-2">
+                  <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2 block ml-2">Белсендіру коды (бар болса, Premium алу үшін)</label>
+                  <input 
+                    type="text" 
+                    maxLength={6} 
+                    placeholder="6 таңбалы кодты енгізіңіз (міндетті емес)" 
+                    className="w-full p-5 bg-amber-50/50 dark:bg-warm-900 border border-amber-200 dark:border-warm-800 rounded-3xl shadow-sm font-bold text-slate-800 dark:text-warm-50 focus:border-amber-500 transition-all uppercase" 
+                    value={formData.activationCode} 
+                    onChange={e => setFormData({...formData, activationCode: e.target.value.toUpperCase()})} 
+                  />
+                </div>
               </div>
             )}
             {error && <p className="text-red-500 text-[11px] font-bold text-center uppercase tracking-widest">{error}</p>}
